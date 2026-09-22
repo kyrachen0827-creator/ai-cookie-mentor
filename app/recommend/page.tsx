@@ -1,0 +1,125 @@
+"use client";
+
+/**
+ * 推薦結果頁（product-spec MVP 第 2 項）
+ *
+ * 帶入 localStorage 的 Food Profile（工具過濾＋過敏排除由後端 agent 處理），
+ * 呼叫 /api/agents/recipe。選定食譜時把完整 Recipe 暫存 sessionStorage，
+ * 交棒給缺料清單頁顯示真實食材（Phase 1 先不落 DB）。
+ */
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { Recipe } from "@/lib/data/types";
+import { getProfile } from "@/lib/data/profile-client";
+
+const SELECTED_KEY = "zaohuo.selectedRecipe";
+
+function RecommendList() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const ingredients = (params.get("ingredients") ?? "").split(",").filter(Boolean);
+
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [note, setNote] = useState<string>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    async function run() {
+      setLoading(true);
+      setError(undefined);
+      try {
+        const res = await fetch("/api/agents/recipe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ingredients, profile: getProfile() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "推薦失敗");
+        setRecipes(data.recipes ?? []);
+        setNote(data.note);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "推薦失敗");
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (ingredients.length > 0) run();
+    else setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
+
+  function choose(recipe: Recipe) {
+    try {
+      sessionStorage.setItem(SELECTED_KEY, JSON.stringify(recipe));
+    } catch {
+      /* 忽略儲存失敗 */
+    }
+    router.push(`/shopping-list?recipe=${recipe.id}`);
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-2xl px-4 py-8">
+      <header className="mb-6">
+        <a href="/" className="text-sm text-ink-soft hover:text-ink">
+          ← 回首頁
+        </a>
+        <h1 className="mt-3 font-serif text-3xl font-bold text-ink">推薦給你</h1>
+        <p className="mt-1 text-sm text-ink-soft">
+          食材：{ingredients.join("、") || "（未提供）"}
+        </p>
+      </header>
+
+      {loading && <p className="text-ink-soft">AI 正在找菜…</p>}
+      {error && <p className="text-accent">{error}</p>}
+      {note && (
+        <p className="mb-4 rounded-xl bg-primary/10 px-4 py-2 text-sm text-primary-dark">
+          {note}
+        </p>
+      )}
+
+      <ul className="flex flex-col gap-3">
+        {recipes.map((r) => (
+          <li
+            key={r.id}
+            className="rounded-2xl bg-surface p-5 ring-1 ring-brand-border"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="font-serif text-xl font-bold text-ink">
+                {r.recipe_name}
+              </h2>
+              <span className="rounded-full bg-cream px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-brand-border">
+                {r.difficulty_level}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-ink-soft">
+              約 {r.estimated_time_minutes} 分鐘
+              {r.required_tools.length > 0 && `　·　需要：${r.required_tools.join("、")}`}
+            </p>
+            <p className="mt-2 text-sm text-ink-soft">
+              食材：{r.ingredients.map((i) => i.name).join("、")}
+            </p>
+            <button
+              onClick={() => choose(r)}
+              className="mt-4 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark"
+            >
+              就煮這道
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {!loading && recipes.length === 0 && !error && (
+        <p className="text-ink-soft">沒有找到菜色，回首頁換個食材試試。</p>
+      )}
+    </div>
+  );
+}
+
+export default function RecommendPage() {
+  return (
+    <Suspense fallback={<p className="px-4 py-8 text-ink-soft">載入中…</p>}>
+      <RecommendList />
+    </Suspense>
+  );
+}
