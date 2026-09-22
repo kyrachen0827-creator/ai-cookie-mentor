@@ -3,7 +3,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 
 export const metadata: Metadata = {
-  title: "灶火 ZaoHuo — AI 料理助手",
+  title: "酷嗑 — AI 料理助手",
   description: "選菜 → 陪做 → 評分，三段 AI 一路陪料理新手完成一道菜",
 };
 

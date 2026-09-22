@@ -12,11 +12,9 @@ export default function Header() {
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary font-serif text-lg font-bold text-white">
-            灶
+            酷
           </span>
-          <span className="font-serif text-lg font-bold text-ink">
-            灶火 <span className="tracking-wide text-ink-soft">ZaoHuo</span>
-          </span>
+          <span className="font-serif text-lg font-bold text-ink">酷嗑</span>
         </Link>
 
         <nav className="hidden items-center gap-7 text-sm font-medium text-ink-soft md:flex">

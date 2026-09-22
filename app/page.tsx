@@ -43,7 +43,7 @@ export default function HomePage() {
           </h1>
 
           <p className="mt-5 max-w-md text-ink-soft">
-            從「選菜」到「陪做」再「評分」，三段 AI 一路陪著你。做到一半沒人可問？做完不知道好不好？我們都幫你顧著。
+            從「選菜」到「陪做」再「評分」，三位老師一路陪著你。做到一半沒人可問？做完不知道好不好？我們都幫你顧著。
           </p>
 
           <div className="mt-7 flex flex-wrap gap-3">
@@ -125,7 +125,7 @@ export default function HomePage() {
       {/* ===== 三段 AI ===== */}
       <section id="flow" className="py-10">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="font-serif text-2xl font-bold text-ink">三段 AI，一路陪你做完</h2>
+          <h2 className="font-serif text-2xl font-bold text-ink">三位老師，陪你一路做完最佳美肴</h2>
           <span className="hidden text-sm text-ink-soft sm:block">選菜 → 陪做 → 評分</span>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
@@ -184,7 +184,7 @@ export default function HomePage() {
       </section>
 
       <footer className="border-t border-brand-border py-8 text-center text-sm text-ink-soft">
-        灶火 ZaoHuo · AI 料理助手 · Demo
+        酷嗑 · AI 料理助手 · Demo
       </footer>
     </div>
   );

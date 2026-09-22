@@ -10,11 +10,16 @@ import "server-only";
  * 定案要點（2026/09/22）：
  * - 推薦 3–5 道，新手友善優先
  * - 食譜來源：AI 生成，鎖定台灣可靠來源（iCook / Cookpad 台灣 / 楊桃 / 下廚房）以降低幻覺
- * - 難易度、時間走 rules.ts 的規則判斷，非 AI 自由估算
+ * - 難易度、時間走 rules.ts 的規則判斷，非 AI 自由估算（AI 只給客觀因子，難易度由程式算）
  */
 import type { FoodProfile, Recipe } from "@/lib/data/types";
 import { generateText, hasGeminiKey } from "@/lib/ai/gemini";
-import { filterByTools, sortBeginnerFriendly } from "./rules";
+import {
+  estimateTimeMinutes,
+  filterByTools,
+  judgeDifficulty,
+  sortBeginnerFriendly,
+} from "./rules";
 
 /** 鎖定的台灣可靠食譜來源（寫進 prompt，要求 AI 以其風格與常見做法為根據，降低幻覺） */
 const TRUSTED_SOURCES = ["愛料理 iCook", "Cookpad 台灣", "楊桃美食網", "下廚房"];
@@ -27,29 +32,52 @@ export interface RecommendInput {
 
 export interface RecommendResult {
   recipes: Recipe[];
-  /** 找不到合適菜色時的坦白說明與建議（邊界情況） */
+  /** 找不到合適菜色或來源說明（邊界情況／開發提示） */
   note?: string;
+}
+
+/** AI 回傳的單筆食譜原始結構（難易度與時間交由程式規則判斷，不由 AI 決定） */
+interface RawRecipe {
+  recipe_name?: string;
+  required_tools?: string[];
+  ingredients?: { name?: string; amount?: string }[];
+  steps?: { action?: string; heat?: string; minutes?: number; doneness_cue?: string }[];
+  finished_dish_standard?: string;
+  // 規則判斷用的客觀因子（由 AI 標註）
+  needs_advance_prep?: boolean;
+  needs_feel_judgement?: boolean;
+  needs_special_skill_or_tool?: boolean;
 }
 
 function buildPrompt(input: RecommendInput): string {
   const { ingredients, profile } = input;
   return [
-    "你是料理新手的食譜推薦助手。請根據使用者食材推薦 3–5 道新手做得到的菜。",
-    `參考台灣常見可靠來源的做法風格：${TRUSTED_SOURCES.join("、")}；不要杜撰不存在的做法。`,
+    "你是台灣料理新手的食譜推薦助手。根據使用者食材，推薦 3–5 道新手做得到的家常菜。",
+    `做法請參考台灣常見可靠來源的風格：${TRUSTED_SOURCES.join("、")}；只推薦真實存在的家常做法，不要杜撰。`,
+    "",
     `使用者食材：${ingredients.join("、")}`,
-    `擁有的廚房工具：${profile.kitchen_tools.join("、") || "（未提供）"}`,
-    `過敏／飲食限制（務必完全排除）：${profile.dietary_restrictions.join("、") || "無"}`,
+    `擁有的廚房工具：${profile.kitchen_tools.join("、") || "（未提供，請只推薦免特殊工具或用一般鍋具即可的菜）"}`,
+    `過敏／飲食限制（食材務必完全避開）：${profile.dietary_restrictions.join("、") || "無"}`,
     `預設人數：${profile.default_serving_size}`,
-    "每道菜需包含：菜名、所需工具、食材(含份量)、步驟(每步含動作/火力/時間/怎麼看出做對了)、成品標準。",
-    "步驟避免『適量』『炒到有香氣』這類需經驗才懂的說法，一律用可觀察的描述。",
-    "請以 JSON 陣列輸出，不要多餘文字。",
+    "",
+    "步驟描述避免『適量』『炒到有香氣』這類需經驗才懂的說法，一律用可觀察的判斷（外觀、聲音、氣味）。",
+    "只輸出 JSON 陣列，不要有任何多餘文字或 markdown。每個元素格式：",
+    `{
+  "recipe_name": "菜名",
+  "required_tools": ["只能從使用者工具清單挑，用不到就給空陣列"],
+  "ingredients": [{"name": "食材", "amount": "份量，如 2 顆 / 100g"}],
+  "steps": [{"action": "動作", "heat": "火力，如 中火", "minutes": 3, "doneness_cue": "怎麼看出做對了"}],
+  "finished_dish_standard": "成品該有的樣子：顏色、質地、外觀",
+  "needs_advance_prep": false,
+  "needs_feel_judgement": false,
+  "needs_special_skill_or_tool": false
+}`,
   ].join("\n");
 }
 
 /**
- * 產生推薦。
- * 目前為骨架：有 key 時呼叫 Gemini（回傳後仍需 parse + 規則把關 + 合理性檢查，標 TODO）；
- * 無 key 時回傳範例資料，讓 Phase 1 流程可先跑通。
+ * 產生推薦。有 key 時呼叫 Gemini 生成並經規則把關；
+ * 無 key 或生成失敗時退回範例資料，讓流程始終可跑（Demo 友善）。
  */
 export async function recommendRecipes(
   input: RecommendInput,
@@ -58,19 +86,27 @@ export async function recommendRecipes(
     return { recipes: [], note: "請先輸入食材" };
   }
 
+  let candidates: Recipe[];
+  let sourceNote: string | undefined;
+
   if (hasGeminiKey()) {
-    const raw = await generateText(buildPrompt(input));
-    // TODO(Phase 1): 解析 raw JSON → 套 rules.ts 規則判斷難易度/時間 → 合理性檢查（避免幻覺）
-    //                → filterByTools 過濾 → sortBeginnerFriendly 排序。
-    //                目前先讓有 key 時也走範例，待解析與把關實作完成後移除。
-    void raw;
+    try {
+      candidates = await generateFromGemini(input);
+      if (candidates.length === 0) throw new Error("AI 未回傳可用食譜");
+    } catch (e) {
+      candidates = mockRecipes(input.ingredients);
+      const msg = e instanceof Error ? e.message : "未知錯誤";
+      sourceNote = `AI 生成暫時無法使用（${msg}），先以範例資料展示。`;
+    }
+  } else {
+    candidates = mockRecipes(input.ingredients);
+    sourceNote = "開發模式：未設定 GEMINI_API_KEY，先以範例資料展示流程。";
   }
 
-  const mock = mockRecipes(input.ingredients);
   // 硬性過濾：沒有的工具不推薦；過敏／飲食限制食材必須排除
-  const byTools = filterByTools(mock, input.profile.kitchen_tools);
+  const byTools = filterByTools(candidates, input.profile.kitchen_tools);
   const usable = filterByRestrictions(
-    byTools.length > 0 ? byTools : mock,
+    byTools.length > 0 ? byTools : candidates,
     input.profile.dietary_restrictions,
   );
 
@@ -83,10 +119,76 @@ export async function recommendRecipes(
 
   return {
     recipes: sortBeginnerFriendly(usable).slice(0, 5),
-    note: hasGeminiKey()
-      ? undefined
-      : "開發模式：未設定 GEMINI_API_KEY，先以範例資料展示流程。",
+    note: sourceNote,
   };
+}
+
+/** 呼叫 Gemini 生成食譜，並以規則判斷難易度/時間、做合理性檢查 */
+async function generateFromGemini(input: RecommendInput): Promise<Recipe[]> {
+  const raw = await generateText(buildPrompt(input));
+  const parsed = extractJsonArray(raw);
+
+  return parsed
+    .map((r, i) => toRecipe(r, i))
+    .filter((r): r is Recipe => r !== null);
+}
+
+/** 從模型輸出中抽出 JSON 陣列（容忍 ```json 圍欄與前後雜訊） */
+function extractJsonArray(raw: string): RawRecipe[] {
+  let s = raw.trim();
+  s = s.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  const start = s.indexOf("[");
+  const end = s.lastIndexOf("]");
+  if (start === -1 || end === -1) {
+    throw new Error("AI 回傳格式無法解析");
+  }
+  const data = JSON.parse(s.slice(start, end + 1));
+  return Array.isArray(data) ? (data as RawRecipe[]) : [];
+}
+
+/**
+ * 原始資料 → Recipe，含合理性檢查與規則判斷。
+ * 難易度、時間由程式依規則產出（非 AI 自由估算），確保同一道菜結果一致。
+ * 不合格（缺名稱／無食材／無步驟）者回傳 null 被濾除，降低幻覺影響。
+ */
+function toRecipe(r: RawRecipe, index: number): Recipe | null {
+  const name = r.recipe_name?.trim();
+  const ingredients = (r.ingredients ?? [])
+    .filter((i) => i?.name?.trim())
+    .map((i) => ({ name: i.name!.trim(), amount: (i.amount ?? "").trim() }));
+  const steps = (r.steps ?? [])
+    .filter((s) => s?.action?.trim())
+    .map((s) => ({
+      action: s.action!.trim(),
+      heat: s.heat?.trim() || undefined,
+      minutes: typeof s.minutes === "number" ? s.minutes : undefined,
+      doneness_cue: (s.doneness_cue ?? "").trim(),
+    }));
+
+  if (!name || ingredients.length === 0 || steps.length === 0) return null;
+
+  const difficulty_level = judgeDifficulty({
+    stepCount: steps.length,
+    needsAdvancePrep: Boolean(r.needs_advance_prep),
+    needsFeelJudgement: Boolean(r.needs_feel_judgement),
+    needsSpecialSkillOrTool: Boolean(r.needs_special_skill_or_tool),
+    ingredientCount: ingredients.length,
+  });
+
+  return {
+    id: `ai-${index}-${slug(name)}`,
+    recipe_name: name,
+    difficulty_level,
+    estimated_time_minutes: estimateTimeMinutes(steps),
+    required_tools: (r.required_tools ?? []).filter(Boolean),
+    ingredients,
+    steps,
+    finished_dish_standard: (r.finished_dish_standard ?? "").trim(),
+  };
+}
+
+function slug(name: string): string {
+  return name.replace(/\s+/g, "-").slice(0, 12);
 }
 
 /** 過敏／飲食限制：排除食材命中任一限制字詞的食譜 */
@@ -100,7 +202,7 @@ function filterByRestrictions(recipes: Recipe[], restrictions: string[]): Recipe
   );
 }
 
-/** 開發用範例資料（骨架階段，示範難易度排序與工具過濾） */
+/** 開發用範例資料（無 key 或生成失敗時的 fallback，示範難易度排序與工具過濾） */
 function mockRecipes(ingredients: string[]): Recipe[] {
   const main = ingredients[0] ?? "食材";
   return [
