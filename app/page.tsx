@@ -70,12 +70,12 @@ export default function HomePage() {
 
           <div className="mt-8 flex gap-10">
             <div>
-              <div className="font-serif text-2xl font-bold text-accent">12k+</div>
-              <div className="text-sm text-ink-soft">新手成功下鍋</div>
+              <div className="font-serif text-2xl font-bold text-accent">3 段 AI</div>
+              <div className="text-sm text-ink-soft">選菜 · 陪做 · 評分</div>
             </div>
             <div>
-              <div className="font-serif text-2xl font-bold text-herb">4.8</div>
-              <div className="text-sm text-ink-soft">菜色平均評分</div>
+              <div className="font-serif text-2xl font-bold text-herb">隨時問</div>
+              <div className="text-sm text-ink-soft">做到一半不卡關</div>
             </div>
           </div>
         </div>

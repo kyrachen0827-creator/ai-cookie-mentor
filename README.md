@@ -18,7 +18,7 @@
 
 ## 技術棧
 
-Next.js（App Router, TypeScript）＋ Tailwind CSS，手機優先 PWA；後端用 Next.js API Routes 作為 AI 代理層；AI 串接 Google Gemini；部署 GCP Cloud Run。詳見 [`CLAUDE.md`](CLAUDE.md) 的「技術棧」段。
+Next.js（App Router, TypeScript）＋ Tailwind CSS，手機優先 PWA；後端用 Next.js API Routes 作為 AI 代理層；AI 串接 Google Gemini；部署 GCP Cloud Run。詳見 [`CLAUDE.md`](CLAUDE.md) 的「技術棧」段，部署步驟見 [`DEPLOY.md`](DEPLOY.md)。
 
 ## 快速上手
 
