@@ -179,8 +179,14 @@ export default function HomePage() {
       <section id="kitchen" className="py-10 text-center">
         <h2 className="font-serif text-2xl font-bold text-ink">我的廚房</h2>
         <p className="mx-auto mt-2 max-w-md text-ink-soft">
-          收藏喜歡的食譜、把每次的成品與評分存進作品集，看著自己越煮越好。（作品集功能開發中）
+          收藏喜歡的食譜、把每次的成品與評分存進作品集，看著自己越煮越好。
         </p>
+        <a
+          href="/kitchen"
+          className="mt-4 inline-block rounded-full bg-surface px-5 py-2.5 text-sm font-semibold text-ink ring-1 ring-brand-border transition hover:bg-white"
+        >
+          看我的作品集
+        </a>
       </section>
 
       <footer className="border-t border-brand-border py-8 text-center text-sm text-ink-soft">

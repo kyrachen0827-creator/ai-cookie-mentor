@@ -11,7 +11,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Recipe, Score } from "@/lib/data/types";
 import { getSession } from "@/lib/data/session-client";
-import { saveScore } from "@/lib/data/score-client";
+import { addCompleted } from "@/lib/data/portfolio-client";
 import type { JudgeScoreResult } from "@/lib/agents/judge";
 
 const SELECTED_KEY = "zaohuo.selectedRecipe";
@@ -102,7 +102,7 @@ function Judge() {
       const r = data.result as JudgeScoreResult;
       setResult(r);
 
-      // 保存 Score（含縮圖）供作品集回顧
+      // 存入作品集（含縮圖）供回顧進步
       const score: Score = {
         id: `score-${recipe.id}-${Date.now()}`,
         session_id: `session-${recipe.id}`,
@@ -117,7 +117,7 @@ function Judge() {
         strength_comment: r.strength_comment,
         improvement_comment: r.improvement_comment,
       };
-      saveScore(recipe.id, score);
+      addCompleted(recipe, score);
     } catch (e) {
       setError(e instanceof Error ? e.message : "評分失敗");
     } finally {

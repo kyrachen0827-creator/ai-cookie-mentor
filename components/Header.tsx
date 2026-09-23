@@ -27,7 +27,7 @@ export default function Header() {
           <Link href="/#judge" className="hover:text-ink">
             評分
           </Link>
-          <Link href="/#kitchen" className="hover:text-ink">
+          <Link href="/kitchen" className="hover:text-ink">
             我的廚房
           </Link>
         </nav>

@@ -11,6 +11,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Recipe } from "@/lib/data/types";
 import { getProfile } from "@/lib/data/profile-client";
+import { isFavorite, toggleFavorite } from "@/lib/data/portfolio-client";
 
 const SELECTED_KEY = "zaohuo.selectedRecipe";
 
@@ -23,6 +24,7 @@ function RecommendList() {
   const [note, setNote] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const [favs, setFavs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function run() {
@@ -36,7 +38,9 @@ function RecommendList() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "推薦失敗");
-        setRecipes(data.recipes ?? []);
+        const list: Recipe[] = data.recipes ?? [];
+        setRecipes(list);
+        setFavs(new Set(list.filter((r) => isFavorite(r.id)).map((r) => r.id)));
         setNote(data.note);
       } catch (e) {
         setError(e instanceof Error ? e.message : "推薦失敗");
@@ -56,6 +60,16 @@ function RecommendList() {
       /* 忽略儲存失敗 */
     }
     router.push(`/shopping-list?recipe=${recipe.id}`);
+  }
+
+  function toggleFav(recipe: Recipe) {
+    const nowFav = toggleFavorite(recipe);
+    setFavs((prev) => {
+      const next = new Set(prev);
+      if (nowFav) next.add(recipe.id);
+      else next.delete(recipe.id);
+      return next;
+    });
   }
 
   return (
@@ -99,12 +113,25 @@ function RecommendList() {
             <p className="mt-2 text-sm text-ink-soft">
               食材：{r.ingredients.map((i) => i.name).join("、")}
             </p>
-            <button
-              onClick={() => choose(r)}
-              className="mt-4 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark"
-            >
-              就煮這道
-            </button>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                onClick={() => choose(r)}
+                className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark"
+              >
+                就煮這道
+              </button>
+              <button
+                onClick={() => toggleFav(r)}
+                aria-label="收藏"
+                className={`rounded-full px-3 py-2 text-sm font-semibold ring-1 transition ${
+                  favs.has(r.id)
+                    ? "bg-accent/10 text-accent ring-accent/30"
+                    : "bg-surface text-ink-soft ring-brand-border hover:text-ink"
+                }`}
+              >
+                {favs.has(r.id) ? "★ 已收藏" : "☆ 收藏"}
+              </button>
+            </div>
           </li>
         ))}
       </ul>
