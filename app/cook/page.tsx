@@ -220,12 +220,12 @@ function Cook() {
             辛苦了，{recipe.recipe_name} 做好了。拍張照給 AI 評審打分數吧（評分功能開發中）。
           </p>
           <div className="mt-6 flex flex-col gap-3">
-            <button
-              disabled
-              className="w-full rounded-full bg-primary px-4 py-3 font-semibold text-white opacity-40"
+            <a
+              href={`/judge?recipe=${recipe.id}`}
+              className="w-full rounded-full bg-primary px-4 py-3 font-semibold text-white transition hover:bg-primary-dark"
             >
-              拍照給評審打分（Phase 3）
-            </button>
+              拍照給評審打分
+            </a>
             <a
               href="/"
               className="w-full rounded-full bg-surface px-4 py-3 font-semibold text-ink ring-1 ring-brand-border"

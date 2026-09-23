@@ -95,10 +95,16 @@ export interface Score {
   dish_photo: string;
   /** 色彩搭配分數 color_score：整數 1–5 */
   color_score: number;
+  /** 色彩搭配依據 color_evidence：照片中看到什麼 */
+  color_evidence: string;
   /** 擺盤造型分數 plating_score：整數 1–5 */
   plating_score: number;
+  /** 擺盤造型依據 plating_evidence：照片中看到什麼 */
+  plating_evidence: string;
   /** 烹調完成度分數 doneness_score：整數 1–5 */
   doneness_score: number;
+  /** 烹調完成度依據 doneness_evidence：照片中看到什麼 */
+  doneness_evidence: string;
   /** 總分 total_score：三項加總 1–15 */
   total_score: number;
   /** 做得好的點 strength_comment */

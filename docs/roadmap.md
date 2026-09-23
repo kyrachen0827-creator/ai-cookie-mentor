@@ -26,8 +26,8 @@
 
 對應 user-flow 步驟 7–8。
 
-- [ ] 拍照引導
-- [ ] AI agent ③評審：三項分數＋做得好的點＋改進點（見 `docs/spec/agents/judge-agent.md`）
+- [x] 拍照引導
+- [x] AI agent ③評審：三項分數＋做得好的點＋改進點（見 `docs/spec/agents/judge-agent.md`）
 
 ### Phase 4：作品集 + 老師 C1
 

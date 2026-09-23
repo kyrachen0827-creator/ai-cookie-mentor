@@ -67,11 +67,14 @@ Portfolio Entry ── 引用 → Recipe 或 Cooking Session
 | 關聯 Session | session_id | |
 | 成品照片 | dish_photo | 保存於作品集，直到使用者刪除，不設自動過期 |
 | 色彩搭配分數 | color_score | 整數 1–5 |
+| 色彩搭配依據 | color_evidence | 該分數「照片中看到什麼」的依據 |
 | 擺盤造型分數 | plating_score | 整數 1–5 |
+| 擺盤造型依據 | plating_evidence | 該分數「照片中看到什麼」的依據 |
 | 烹調完成度分數 | doneness_score | 整數 1–5 |
+| 烹調完成度依據 | doneness_evidence | 該分數「照片中看到什麼」的依據 |
 | 總分 | total_score | 三項加總，1–15（由三項換算，不獨立評分） |
-| 做得好的點 | strength_comment | |
-| 下次改進點 | improvement_comment | |
+| 做得好的點 | strength_comment | 具體 |
+| 下次改進點 | improvement_comment | 具體、可操作 |
 
 讀寫：③ 評審（寫）；作品集（讀）
 
@@ -103,3 +106,4 @@ Portfolio Entry ── 引用 → Recipe 或 Cooking Session
 ## 變更紀錄
 
 - 2026/09/22｜隨 product-spec 定案更新：料理脈絡採完整版（`session_log` 必記錄、納入歷次 `score`）；`color_score`／`plating_score`／`doneness_score` 定為整數 1–5，新增 `total_score`（1–15）；`dish_photo` 保存至使用者刪除｜product-spec 待討論事項 2、5、8 拍板
+- 2026/09/23｜Score 新增三項「依據」欄位 `color_evidence`／`plating_evidence`／`doneness_evidence`，對應 judge-agent「每個分數附『照片中看到什麼』的依據」的輸出，原欄位僅存分數無處存依據｜Phase 3 評審實作

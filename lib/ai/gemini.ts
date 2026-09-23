@@ -24,6 +24,7 @@ export function hasGeminiKey(): boolean {
 export async function generateText(
   prompt: string,
   images?: { mimeType: string; dataBase64: string }[],
+  options?: { temperature?: number },
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -39,12 +40,18 @@ export async function generateText(
     });
   }
 
+  const body: Record<string, unknown> = { contents: [{ parts }] };
+  if (options?.temperature !== undefined) {
+    // 評審需要「同一張照片結果一致」，以 temperature 0 逼近確定性輸出
+    body.generationConfig = { temperature: options.temperature };
+  }
+
   const res = await fetch(
     `${GEMINI_ENDPOINT}/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts }] }),
+      body: JSON.stringify(body),
     },
   );
 
