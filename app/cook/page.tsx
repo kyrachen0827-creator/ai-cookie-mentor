@@ -1,0 +1,376 @@
+"use client";
+
+/**
+ * 料理老師陪做頁（product-spec MVP 第 4 項，A 版）
+ *
+ * 對應 cooking-teacher-agent.md A：備料確認 → 一步一畫面（動作/火力/時間/怎麼看出做對了）
+ * → 安全提醒 → 隨時文字提問（呼叫 /api/agents/teacher）→ 上一步/重複/中途離開回進度。
+ * 進度與過程紀錄存於 Cooking Session（lib/data/session-client）。
+ *
+ * current_step：0 = 備料確認；1..N = 第 N 步；N+1 = 完成。
+ */
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import type { Recipe } from "@/lib/data/types";
+import { getSafetyHints } from "@/lib/agents/teacher/safety";
+import {
+  appendLog,
+  getSession,
+  setCurrentStep,
+  setStatus,
+  startOrResume,
+} from "@/lib/data/session-client";
+
+const SELECTED_KEY = "zaohuo.selectedRecipe";
+
+interface QA {
+  q: string;
+  a: string;
+}
+
+function Cook() {
+  const params = useSearchParams();
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [step, setStep] = useState(0);
+  const [prepChecked, setPrepChecked] = useState<Set<string>>(new Set());
+  const [qa, setQa] = useState<QA[]>([]);
+  const [question, setQuestion] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [repeated, setRepeated] = useState(false);
+  const loaded = useRef(false);
+
+  // 載入選定食譜 + 還原進度
+  useEffect(() => {
+    if (loaded.current) return;
+    loaded.current = true;
+    let r: Recipe | null = null;
+    try {
+      const raw = sessionStorage.getItem(SELECTED_KEY);
+      if (raw) r = JSON.parse(raw) as Recipe;
+    } catch {
+      /* 忽略 */
+    }
+    const id = params.get("recipe");
+    if (!r && id) {
+      const s = getSession(id);
+      if (s) r = s.recipe;
+    }
+    if (r) {
+      const s = startOrResume(r);
+      setRecipe(r);
+      setStep(s.current_step);
+    }
+  }, [params]);
+
+  if (!recipe) {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-4 py-8">
+        <p className="text-ink-soft">還沒有選定的食譜。</p>
+        <a href="/" className="mt-3 inline-block text-primary underline">
+          回首頁挑一道
+        </a>
+      </div>
+    );
+  }
+
+  const total = recipe.steps.length;
+
+  function goStep(n: number) {
+    setStep(n);
+    setRepeated(false);
+    if (recipe) {
+      setCurrentStep(recipe, n);
+      if (n > total) setStatus(recipe, "已完成");
+    }
+  }
+
+  async function ask() {
+    const qtext = question.trim();
+    if (!recipe || !qtext || asking) return;
+    setQuestion("");
+    setAsking(true);
+    setQa((prev) => [...prev, { q: qtext, a: "" }]);
+    appendLog(recipe, { source: "使用者狀態", content: `第${step}步提問：${qtext}` });
+    try {
+      const res = await fetch("/api/agents/teacher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipe,
+          stepIndex: step >= 1 && step <= total ? step - 1 : null,
+          question: qtext,
+        }),
+      });
+      const data = await res.json();
+      const ans = res.ok ? (data.answer as string) : (data.error ?? "回答失敗");
+      appendLog(recipe, { source: "老師提醒", content: ans });
+      setQa((prev) =>
+        prev.map((item, i) => (i === prev.length - 1 ? { ...item, a: ans } : item)),
+      );
+    } catch {
+      setQa((prev) =>
+        prev.map((item, i) =>
+          i === prev.length - 1 ? { ...item, a: "網路出了點問題，請再問一次。" } : item,
+        ),
+      );
+    } finally {
+      setAsking(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-2xl px-4 py-8">
+      <header className="mb-5">
+        <a href="/" className="text-sm text-ink-soft hover:text-ink">
+          ← 離開（進度會保留）
+        </a>
+        <h1 className="mt-3 font-serif text-2xl font-bold text-ink">
+          {recipe.recipe_name}
+        </h1>
+      </header>
+
+      {/* 進度條 */}
+      <div className="mb-6">
+        <div className="mb-1 flex justify-between text-xs text-ink-soft">
+          <span>{step === 0 ? "備料確認" : step > total ? "完成" : `第 ${step} / ${total} 步`}</span>
+          {step >= 1 && step <= total && <span>{Math.round((step / total) * 100)}%</span>}
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-brand-border/60">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${step === 0 ? 4 : Math.min(100, (step / total) * 100)}%` }}
+          />
+        </div>
+      </div>
+
+      {/* ===== 備料確認 ===== */}
+      {step === 0 && (
+        <section>
+          <h2 className="mb-1 font-serif text-lg font-bold text-ink">先確認備料</h2>
+          <p className="mb-4 text-sm text-ink-soft">開始前對一下，缺的先準備好。</p>
+          <ul className="mb-6 flex flex-col gap-2">
+            {[
+              ...recipe.ingredients.map((i) => ({
+                key: `ing:${i.name}`,
+                label: `${i.name} ${i.amount}`.trim(),
+                kind: "食材",
+              })),
+              ...recipe.required_tools.map((t) => ({
+                key: `tool:${t}`,
+                label: t,
+                kind: "器具",
+              })),
+            ].map((item) => (
+              <li key={item.key}>
+                <label className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 ring-1 ring-brand-border">
+                  <input
+                    type="checkbox"
+                    checked={prepChecked.has(item.key)}
+                    onChange={() =>
+                      setPrepChecked((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(item.key)) next.delete(item.key);
+                        else next.add(item.key);
+                        return next;
+                      })
+                    }
+                    className="h-5 w-5 accent-primary"
+                  />
+                  <span className={prepChecked.has(item.key) ? "text-ink-soft/50 line-through" : "text-ink"}>
+                    {item.label}
+                  </span>
+                  <span className="ml-auto text-xs text-ink-soft">{item.kind}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => goStep(1)}
+            className="w-full rounded-full bg-primary px-4 py-3 font-semibold text-white transition hover:bg-primary-dark"
+          >
+            都備好了，開始做
+          </button>
+        </section>
+      )}
+
+      {/* ===== 一步一畫面 ===== */}
+      {step >= 1 && step <= total && (
+        <StepView
+          step={recipe.steps[step - 1]}
+          index={step}
+          total={total}
+          repeated={repeated}
+          onPrev={() => goStep(step - 1)}
+          onRepeat={() => setRepeated(true)}
+          onNext={() => goStep(step + 1)}
+          qa={qa}
+          question={question}
+          setQuestion={setQuestion}
+          asking={asking}
+          onAsk={ask}
+        />
+      )}
+
+      {/* ===== 完成 ===== */}
+      {step > total && (
+        <section className="text-center">
+          <div className="mb-4 text-4xl">🎉</div>
+          <h2 className="font-serif text-2xl font-bold text-ink">完成了！</h2>
+          <p className="mx-auto mt-2 max-w-sm text-ink-soft">
+            辛苦了，{recipe.recipe_name} 做好了。拍張照給 AI 評審打分數吧（評分功能開發中）。
+          </p>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              disabled
+              className="w-full rounded-full bg-primary px-4 py-3 font-semibold text-white opacity-40"
+            >
+              拍照給評審打分（Phase 3）
+            </button>
+            <a
+              href="/"
+              className="w-full rounded-full bg-surface px-4 py-3 font-semibold text-ink ring-1 ring-brand-border"
+            >
+              回首頁
+            </a>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/* ---------- 單一步驟畫面 ---------- */
+function StepView({
+  step,
+  index,
+  total,
+  repeated,
+  onPrev,
+  onRepeat,
+  onNext,
+  qa,
+  question,
+  setQuestion,
+  asking,
+  onAsk,
+}: {
+  step: Recipe["steps"][number];
+  index: number;
+  total: number;
+  repeated: boolean;
+  onPrev: () => void;
+  onRepeat: () => void;
+  onNext: () => void;
+  qa: QA[];
+  question: string;
+  setQuestion: (v: string) => void;
+  asking: boolean;
+  onAsk: () => void;
+}) {
+  const hints = getSafetyHints(step);
+
+  return (
+    <section>
+      <div className="rounded-2xl bg-surface p-5 ring-1 ring-brand-border">
+        <div className="mb-2 flex items-center gap-2 text-sm text-ink-soft">
+          {step.heat && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary-dark">
+              🔥 {step.heat}
+            </span>
+          )}
+          {step.minutes ? (
+            <span className="rounded-full bg-cream px-2 py-0.5 ring-1 ring-brand-border">
+              ⏱ 約 {step.minutes} 分
+            </span>
+          ) : null}
+        </div>
+        <p className="font-serif text-xl font-bold leading-relaxed text-ink">
+          {step.action}
+        </p>
+        <div className="mt-3 rounded-xl bg-herb/10 p-3 text-sm text-ink">
+          <span className="font-semibold text-herb">怎麼看出做對了：</span>
+          {step.doneness_cue}
+        </div>
+
+        {/* 安全提醒 */}
+        {hints.length > 0 && (
+          <div className="mt-3 rounded-xl bg-accent/10 p-3 text-sm text-ink">
+            {hints.map((h, i) => (
+              <p key={i} className="flex gap-1.5">
+                <span className="text-accent">⚠️</span>
+                <span>{h}</span>
+              </p>
+            ))}
+          </div>
+        )}
+
+        {repeated && (
+          <p className="mt-3 text-xs text-ink-soft">↑ 已再讀一次這一步，慢慢來。</p>
+        )}
+      </div>
+
+      {/* 導航 */}
+      <div className="mt-4 flex gap-2">
+        <button
+          onClick={onPrev}
+          className="flex-1 rounded-full bg-surface px-4 py-3 text-sm font-semibold text-ink ring-1 ring-brand-border"
+        >
+          {index === 1 ? "回備料" : "上一步"}
+        </button>
+        <button
+          onClick={onRepeat}
+          className="rounded-full bg-surface px-4 py-3 text-sm font-semibold text-ink ring-1 ring-brand-border"
+        >
+          重複
+        </button>
+        <button
+          onClick={onNext}
+          className="flex-1 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-dark"
+        >
+          {index === total ? "完成" : "下一步"}
+        </button>
+      </div>
+
+      {/* 隨時提問 */}
+      <div className="mt-6">
+        <h3 className="mb-2 font-semibold text-ink">卡住了？問老師</h3>
+        <div className="flex flex-col gap-3">
+          {qa.map((item, i) => (
+            <div key={i} className="flex flex-col gap-2">
+              <div className="self-end rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-white">
+                {item.q}
+              </div>
+              <div className="self-start rounded-2xl rounded-bl-sm bg-surface px-3 py-2 text-sm text-ink ring-1 ring-brand-border">
+                {item.a || (asking && i === qa.length - 1 ? "老師想一下…" : "")}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex items-center gap-2 rounded-2xl bg-surface px-3 py-2 ring-1 ring-brand-border">
+          <input
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onAsk()}
+            placeholder="例：火要多大？怎麼看有沒有熟？"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-ink-soft/60"
+          />
+          <button
+            onClick={onAsk}
+            disabled={asking}
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {asking ? "…" : "問"}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function CookPage() {
+  return (
+    <Suspense fallback={<p className="px-4 py-8 text-ink-soft">載入中…</p>}>
+      <Cook />
+    </Suspense>
+  );
+}

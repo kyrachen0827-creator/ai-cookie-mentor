@@ -7,11 +7,13 @@
  * 可勾「我有這個」即時扣除；備齊後進入料理（Phase 2 老師，目前鎖住）。
  */
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Recipe } from "@/lib/data/types";
 
 const SELECTED_KEY = "zaohuo.selectedRecipe";
 
 function ShoppingList() {
+  const router = useRouter();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [owned, setOwned] = useState<Set<string>>(new Set());
 
@@ -102,9 +104,10 @@ function ShoppingList() {
 
       <button
         disabled={!allReady}
+        onClick={() => router.push(`/cook?recipe=${recipe.id}`)}
         className="mt-6 w-full rounded-full bg-primary px-4 py-3 font-semibold text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {allReady ? "備齊了，開始料理" : "備齊後開始料理（Phase 2）"}
+        {allReady ? "備齊了，開始料理" : `還差 ${missing.length} 項就能開始`}
       </button>
     </div>
   );
