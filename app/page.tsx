@@ -61,6 +61,13 @@ export default function HomePage() {
             </a>
           </div>
 
+          <a
+            href="/setup"
+            className="mt-4 w-fit text-sm text-ink-soft underline hover:text-ink"
+          >
+            先設定廚房工具與飲食限制
+          </a>
+
           <div className="mt-8 flex gap-10">
             <div>
               <div className="font-serif text-2xl font-bold text-accent">12k+</div>
