@@ -16,6 +16,7 @@ import {
   toggleFavorite,
   type CompletedWork,
 } from "@/lib/data/portfolio-client";
+import { notableTools } from "@/lib/recipe-tools";
 
 const SELECTED_KEY = "zaohuo.selectedRecipe";
 
@@ -128,7 +129,8 @@ export default function KitchenPage() {
                 </div>
                 <p className="mt-1 text-sm text-ink-soft">
                   約 {r.estimated_time_minutes} 分鐘
-                  {r.required_tools.length > 0 && `　·　需要：${r.required_tools.join("、")}`}
+                  {notableTools(r.required_tools).length > 0 &&
+                    `　·　需要：${notableTools(r.required_tools).join("、")}`}
                 </p>
                 <div className="mt-3 flex gap-2">
                   <button

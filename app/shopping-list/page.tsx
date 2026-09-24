@@ -9,6 +9,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Recipe } from "@/lib/data/types";
+import { notableTools } from "@/lib/recipe-tools";
 
 const SELECTED_KEY = "zaohuo.selectedRecipe";
 
@@ -101,9 +102,9 @@ function ShoppingList() {
         ))}
       </ul>
 
-      {recipe.required_tools.length > 0 && (
+      {notableTools(recipe.required_tools).length > 0 && (
         <p className="mt-3 text-sm text-ink-soft">
-          會用到的器具（你已有）：{recipe.required_tools.join("、")}
+          會用到的器具（你已有）：{notableTools(recipe.required_tools).join("、")}
         </p>
       )}
 

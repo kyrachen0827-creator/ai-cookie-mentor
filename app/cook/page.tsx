@@ -13,6 +13,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Recipe } from "@/lib/data/types";
 import { getSafetyHints } from "@/lib/agents/teacher/safety";
+import { notableTools } from "@/lib/recipe-tools";
 import {
   appendLog,
   getSession,
@@ -158,9 +159,9 @@ function Cook() {
               {recipe.ingredients.map((i) => `${i.name} ${i.amount}`.trim()).join("、")}
             </p>
           </div>
-          {recipe.required_tools.length > 0 && (
+          {notableTools(recipe.required_tools).length > 0 && (
             <p className="mb-6 text-sm text-ink-soft">
-              會用到的器具：{recipe.required_tools.join("、")}
+              會用到的器具：{notableTools(recipe.required_tools).join("、")}
             </p>
           )}
           <button
