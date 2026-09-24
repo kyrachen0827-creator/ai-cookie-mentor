@@ -37,6 +37,7 @@ function Cook() {
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
   const [repeated, setRepeated] = useState(false);
+  const [ready, setReady] = useState(false);
   const loaded = useRef(false);
 
   // 載入選定食譜 + 還原進度
@@ -60,7 +61,12 @@ function Cook() {
       setRecipe(r);
       setStep(s.current_step);
     }
+    setReady(true);
   }, [params]);
+
+  if (!ready) {
+    return <p className="px-4 py-8 text-ink-soft">載入中…</p>;
+  }
 
   if (!recipe) {
     return (
@@ -217,7 +223,7 @@ function Cook() {
           <div className="mb-4 text-4xl">🎉</div>
           <h2 className="font-serif text-2xl font-bold text-ink">完成了！</h2>
           <p className="mx-auto mt-2 max-w-sm text-ink-soft">
-            辛苦了，{recipe.recipe_name} 做好了。拍張照給 AI 評審打分數吧（評分功能開發中）。
+            辛苦了，{recipe.recipe_name} 做好了。拍張照給 AI 評審打分數，看看這次表現如何吧！
           </p>
           <div className="mt-6 flex flex-col gap-3">
             <a
@@ -273,7 +279,7 @@ function StepView({
     <section>
       <div className="rounded-2xl bg-surface p-5 ring-1 ring-brand-border">
         <div className="mb-2 flex items-center gap-2 text-sm text-ink-soft">
-          {step.heat && (
+          {step.heat && !["無", "免", "不需要", "無需", "-", "—"].includes(step.heat.trim()) && (
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary-dark">
               🔥 {step.heat}
             </span>

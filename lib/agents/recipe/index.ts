@@ -163,7 +163,7 @@ function toRecipe(r: RawRecipe, index: number): Recipe | null {
     .filter((s) => s?.action?.trim())
     .map((s) => ({
       action: s.action!.trim(),
-      heat: s.heat?.trim() || undefined,
+      heat: normalizeHeat(s.heat),
       minutes: typeof s.minutes === "number" ? s.minutes : undefined,
       doneness_cue: (s.doneness_cue ?? "").trim(),
     }));
@@ -192,6 +192,15 @@ function toRecipe(r: RawRecipe, index: number): Recipe | null {
 
 function slug(name: string): string {
   return name.replace(/\s+/g, "-").slice(0, 12);
+}
+
+/** 火力正規化：AI 對免開火步驟常回「無/免」等，統一轉為無（不顯示火力標籤） */
+function normalizeHeat(heat?: string): string | undefined {
+  const h = heat?.trim();
+  if (!h || ["無", "免", "不需要", "無需", "不用", "-", "—", "常溫"].includes(h)) {
+    return undefined;
+  }
+  return h;
 }
 
 /** 過敏／飲食限制：排除食材命中任一限制字詞的食譜 */

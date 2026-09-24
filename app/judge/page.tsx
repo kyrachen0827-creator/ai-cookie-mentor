@@ -49,6 +49,7 @@ function fileToResized(
 function Judge() {
   const params = useSearchParams();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [ready, setReady] = useState(false);
   const [preview, setPreview] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<JudgeScoreResult>();
@@ -69,6 +70,7 @@ function Judge() {
       if (s) r = s.recipe;
     }
     setRecipe(r);
+    setReady(true);
   }, [params]);
 
   async function onPick(file: File) {
@@ -123,6 +125,10 @@ function Judge() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (!ready) {
+    return <p className="px-4 py-8 text-ink-soft">載入中…</p>;
   }
 
   if (!recipe) {
