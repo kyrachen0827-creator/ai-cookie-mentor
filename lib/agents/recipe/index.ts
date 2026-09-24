@@ -52,7 +52,7 @@ interface RawRecipe {
 function buildPrompt(input: RecommendInput): string {
   const { ingredients, profile } = input;
   return [
-    "你是台灣料理新手的食譜推薦助手。根據使用者食材，推薦 3–5 道新手做得到的家常菜。",
+    "你是台灣料理新手的食譜推薦助手。根據使用者食材，推薦 3 道新手做得到的家常菜。",
     `做法請參考台灣常見可靠來源的風格：${TRUSTED_SOURCES.join("、")}；只推薦真實存在的家常做法，不要杜撰。`,
     "",
     `使用者食材：${ingredients.join("、")}`,
@@ -125,7 +125,10 @@ export async function recommendRecipes(
 
 /** 呼叫 Gemini 生成食譜，並以規則判斷難易度/時間、做合理性檢查 */
 async function generateFromGemini(input: RecommendInput): Promise<Recipe[]> {
-  const raw = await generateText(buildPrompt(input));
+  // 關閉思考模式加速（推薦不需深度推理）
+  const raw = await generateText(buildPrompt(input), undefined, {
+    thinkingBudget: 0,
+  });
   const parsed = extractJsonArray(raw);
 
   return parsed

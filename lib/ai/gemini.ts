@@ -24,7 +24,7 @@ export function hasGeminiKey(): boolean {
 export async function generateText(
   prompt: string,
   images?: { mimeType: string; dataBase64: string }[],
-  options?: { temperature?: number },
+  options?: { temperature?: number; thinkingBudget?: number },
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -41,9 +41,17 @@ export async function generateText(
   }
 
   const body: Record<string, unknown> = { contents: [{ parts }] };
+  const generationConfig: Record<string, unknown> = {};
   if (options?.temperature !== undefined) {
     // 評審需要「同一張照片結果一致」，以 temperature 0 逼近確定性輸出
-    body.generationConfig = { temperature: options.temperature };
+    generationConfig.temperature = options.temperature;
+  }
+  if (options?.thinkingBudget !== undefined) {
+    // Gemini 3.x 預設會「思考」增加延遲；推薦/問答不需深度推理，設 0 關閉以加速
+    generationConfig.thinkingConfig = { thinkingBudget: options.thinkingBudget };
+  }
+  if (Object.keys(generationConfig).length > 0) {
+    body.generationConfig = generationConfig;
   }
 
   const res = await fetch(

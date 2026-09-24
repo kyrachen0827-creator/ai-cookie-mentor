@@ -7,7 +7,7 @@
  * 呼叫 /api/agents/recipe。選定食譜時把完整 Recipe 暫存 sessionStorage，
  * 交棒給缺料清單頁顯示真實食材（Phase 1 先不落 DB）。
  */
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Recipe } from "@/lib/data/types";
 import { getProfile } from "@/lib/data/profile-client";
@@ -25,8 +25,14 @@ function RecommendList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [favs, setFavs] = useState<Set<string>>(new Set());
+  const fetchedFor = useRef<string>("");
 
   useEffect(() => {
+    const key = ingredients.join(",");
+    // 同一組食材只抓一次（避免 React StrictMode 開發模式重複呼叫 API）
+    if (key && fetchedFor.current === key) return;
+    fetchedFor.current = key;
+
     async function run() {
       setLoading(true);
       setError(undefined);
@@ -84,7 +90,13 @@ function RecommendList() {
         </p>
       </header>
 
-      {loading && <p className="text-ink-soft">AI 正在找菜…</p>}
+      {loading && (
+        <div className="flex flex-col items-center gap-3 py-12 text-center">
+          <span className="h-8 w-8 animate-spin rounded-full border-2 border-brand-border border-t-primary" />
+          <p className="font-medium text-ink">AI 正在為你想菜…</p>
+          <p className="text-sm text-ink-soft">依食材現想食譜，大約 10–20 秒，請稍候</p>
+        </div>
+      )}
       {error && <p className="text-accent">{error}</p>}
       {note && (
         <p className="mb-4 rounded-xl bg-primary/10 px-4 py-2 text-sm text-primary-dark">

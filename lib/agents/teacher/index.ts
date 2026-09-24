@@ -65,6 +65,9 @@ export async function answerQuestion(
     return "（目前未設定 AI 金鑰，老師暫時無法即時回答。可先照這一步的「怎麼看出做對了」判斷。）";
   }
 
-  const answer = await generateText(buildPrompt(input));
+  // 關閉思考模式，讓老師回答更即時
+  const answer = await generateText(buildPrompt(input), undefined, {
+    thinkingBudget: 0,
+  });
   return answer.trim() || "這份食譜沒有特別說明，建議照目前這一步的判斷方式操作即可。";
 }
