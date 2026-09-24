@@ -15,6 +15,7 @@ const SELECTED_KEY = "zaohuo.selectedRecipe";
 function ShoppingList() {
   const router = useRouter();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [ready, setReady] = useState(false);
   const [owned, setOwned] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -24,22 +25,17 @@ function ShoppingList() {
     } catch {
       /* 忽略 */
     }
+    setReady(true);
   }, []);
 
-  // 清單 = 食材 + 器具（器具來自 required_tools）
+  // 清單只列食材需要準備；器具是推薦時已依「你擁有的工具」過濾過的，必定已有，
+  // 故不列入待勾清單，改以資訊列提示（修 U4：避免要使用者把已有的爐具再勾一次）。
   const items = useMemo(() => {
-    if (!recipe) return [] as { key: string; label: string; kind: "食材" | "器具" }[];
-    const ing = recipe.ingredients.map((i) => ({
+    if (!recipe) return [] as { key: string; label: string }[];
+    return recipe.ingredients.map((i) => ({
       key: `ing:${i.name}`,
       label: `${i.name} ${i.amount}`.trim(),
-      kind: "食材" as const,
     }));
-    const tools = recipe.required_tools.map((t) => ({
-      key: `tool:${t}`,
-      label: t,
-      kind: "器具" as const,
-    }));
-    return [...ing, ...tools];
   }, [recipe]);
 
   function toggle(key: string) {
@@ -53,6 +49,10 @@ function ShoppingList() {
 
   const allReady = items.length > 0 && owned.size === items.length;
   const missing = items.filter((i) => !owned.has(i.key));
+
+  if (!ready) {
+    return <p className="px-4 py-8 text-ink-soft">載入中…</p>;
+  }
 
   if (!recipe) {
     return (
@@ -96,11 +96,16 @@ function ShoppingList() {
               >
                 {item.label}
               </span>
-              <span className="ml-auto text-xs text-ink-soft">{item.kind}</span>
             </label>
           </li>
         ))}
       </ul>
+
+      {recipe.required_tools.length > 0 && (
+        <p className="mt-3 text-sm text-ink-soft">
+          會用到的器具（你已有）：{recipe.required_tools.join("、")}
+        </p>
+      )}
 
       <button
         disabled={!allReady}

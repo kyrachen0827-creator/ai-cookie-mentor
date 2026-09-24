@@ -32,7 +32,6 @@ function Cook() {
   const params = useSearchParams();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [step, setStep] = useState(0);
-  const [prepChecked, setPrepChecked] = useState<Set<string>>(new Set());
   const [qa, setQa] = useState<QA[]>([]);
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
@@ -149,47 +148,21 @@ function Cook() {
         </div>
       </div>
 
-      {/* ===== 備料確認 ===== */}
+      {/* ===== 備料確認（唯讀快速清點；詳細勾選已在缺料清單完成，修 U3 不重複）===== */}
       {step === 0 && (
         <section>
-          <h2 className="mb-1 font-serif text-lg font-bold text-ink">先確認備料</h2>
-          <p className="mb-4 text-sm text-ink-soft">開始前對一下，缺的先準備好。</p>
-          <ul className="mb-6 flex flex-col gap-2">
-            {[
-              ...recipe.ingredients.map((i) => ({
-                key: `ing:${i.name}`,
-                label: `${i.name} ${i.amount}`.trim(),
-                kind: "食材",
-              })),
-              ...recipe.required_tools.map((t) => ({
-                key: `tool:${t}`,
-                label: t,
-                kind: "器具",
-              })),
-            ].map((item) => (
-              <li key={item.key}>
-                <label className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 ring-1 ring-brand-border">
-                  <input
-                    type="checkbox"
-                    checked={prepChecked.has(item.key)}
-                    onChange={() =>
-                      setPrepChecked((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(item.key)) next.delete(item.key);
-                        else next.add(item.key);
-                        return next;
-                      })
-                    }
-                    className="h-5 w-5 accent-primary"
-                  />
-                  <span className={prepChecked.has(item.key) ? "text-ink-soft/50 line-through" : "text-ink"}>
-                    {item.label}
-                  </span>
-                  <span className="ml-auto text-xs text-ink-soft">{item.kind}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          <h2 className="mb-1 font-serif text-lg font-bold text-ink">開始前，快速看一眼</h2>
+          <p className="mb-4 text-sm text-ink-soft">這些準備好就可以開火囉。</p>
+          <div className="mb-3 rounded-2xl bg-surface p-4 ring-1 ring-brand-border">
+            <p className="text-ink">
+              {recipe.ingredients.map((i) => `${i.name} ${i.amount}`.trim()).join("、")}
+            </p>
+          </div>
+          {recipe.required_tools.length > 0 && (
+            <p className="mb-6 text-sm text-ink-soft">
+              會用到的器具：{recipe.required_tools.join("、")}
+            </p>
+          )}
           <button
             onClick={() => goStep(1)}
             className="w-full rounded-full bg-primary px-4 py-3 font-semibold text-white transition hover:bg-primary-dark"

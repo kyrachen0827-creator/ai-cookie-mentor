@@ -18,7 +18,7 @@ export default function Header() {
         </Link>
 
         <nav className="hidden items-center gap-7 text-sm font-medium text-ink-soft md:flex">
-          <Link href="/#select" className="hover:text-ink">
+          <Link href="/#search" className="hover:text-ink">
             選菜
           </Link>
           <Link href="/#teach" className="hover:text-ink">
@@ -33,7 +33,7 @@ export default function Header() {
         </nav>
 
         <Link
-          href="/#select"
+          href="/#search"
           className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark"
         >
           開始做菜

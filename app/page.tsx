@@ -20,6 +20,8 @@ export default function HomePage() {
       .map((s) => s.trim())
       .filter(Boolean);
     if (ingredients.length === 0) {
+      // 沒輸入時，明確把使用者帶到搜尋框（捲動＋聚焦），避免「點了沒反應」
+      inputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       inputRef.current?.focus();
       return;
     }
@@ -81,7 +83,7 @@ export default function HomePage() {
         </div>
 
         {/* 右側：選菜預覽卡（搜尋可用） */}
-        <div className="rounded-3xl bg-surface p-5 shadow-sm ring-1 ring-brand-border">
+        <div id="search" className="scroll-mt-20 rounded-3xl bg-surface p-5 shadow-sm ring-1 ring-brand-border">
           <div className="mb-3 flex items-center justify-between text-sm">
             <span className="font-semibold text-ink">選菜 · 食譜推薦</span>
             <span className="text-accent">AI 已為你挑好</span>
