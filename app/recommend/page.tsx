@@ -16,6 +16,31 @@ import { notableTools } from "@/lib/recipe-tools";
 
 const SELECTED_KEY = "zaohuo.selectedRecipe";
 
+/** 依菜名挑一個代表性餐點圖示（成品圖 placeholder；真圖可日後接圖片生成） */
+function dishEmoji(name: string): string {
+  const rules: [string[], string][] = [
+    [["湯", "羹"], "🍲"],
+    [["沙拉", "涼拌"], "🥗"],
+    [["麵", "義大利"], "🍜"],
+    [["飯", "丼", "燴飯"], "🍚"],
+    [["粥"], "🥣"],
+    [["餅", "煎餅", "蛋餅"], "🥞"],
+    [["焗", "起司", "起士"], "🧀"],
+    [["氣炸", "炸", "酥"], "🍤"],
+    [["蛋"], "🍳"],
+    [["雞"], "🍗"],
+    [["蝦", "海鮮", "花枝", "透抽"], "🦐"],
+    [["魚"], "🐟"],
+    [["豬", "牛", "排", "肉"], "🥩"],
+    [["豆腐"], "🍢"],
+    [["菜", "蔬", "瓜"], "🥬"],
+  ];
+  for (const [keys, emoji] of rules) {
+    if (keys.some((k) => name.includes(k))) return emoji;
+  }
+  return "🍽️";
+}
+
 function RecommendList() {
   const router = useRouter();
   const params = useSearchParams();
@@ -111,22 +136,30 @@ function RecommendList() {
             key={r.id}
             className="rounded-2xl bg-surface p-5 ring-1 ring-brand-border"
           >
-            <div className="flex items-center justify-between">
-              <h2 className="font-serif text-xl font-bold text-ink">
-                {r.recipe_name}
-              </h2>
-              <span className="rounded-full bg-cream px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-brand-border">
-                {r.difficulty_level}
-              </span>
+            <div className="flex gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="font-serif text-xl font-bold text-ink">
+                    {r.recipe_name}
+                  </h2>
+                  <span className="shrink-0 rounded-full bg-cream px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-brand-border">
+                    {r.difficulty_level}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-ink-soft">
+                  約 {r.estimated_time_minutes} 分鐘
+                  {notableTools(r.required_tools).length > 0 &&
+                    `　·　需要：${notableTools(r.required_tools).join("、")}`}
+                </p>
+                <p className="mt-2 text-sm text-ink-soft">
+                  食材：{r.ingredients.map((i) => i.name).join("、")}
+                </p>
+              </div>
+              {/* 成品圖（風格化縮圖） */}
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-herb/15 text-4xl ring-1 ring-brand-border">
+                {dishEmoji(r.recipe_name)}
+              </div>
             </div>
-            <p className="mt-1 text-sm text-ink-soft">
-              約 {r.estimated_time_minutes} 分鐘
-              {notableTools(r.required_tools).length > 0 &&
-                `　·　需要：${notableTools(r.required_tools).join("、")}`}
-            </p>
-            <p className="mt-2 text-sm text-ink-soft">
-              食材：{r.ingredients.map((i) => i.name).join("、")}
-            </p>
             <div className="mt-4 flex items-center gap-2">
               <button
                 onClick={() => choose(r)}
