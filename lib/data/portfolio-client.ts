@@ -65,8 +65,15 @@ export function listCompleted(): CompletedWork[] {
   return read<CompletedWork[]>(DONE_KEY, []);
 }
 
-/** 新增一筆完成作品（評審評分後呼叫），最新在前 */
+/** 完成作品保留上限：成品照為 base64，過多會撐爆 localStorage（約 5MB） */
+const MAX_COMPLETED = 20;
+
+/** 新增一筆完成作品（評審評分後呼叫），最新在前，超過上限捨棄最舊 */
 export function addCompleted(recipe: Recipe, score: Score): void {
   const list = listCompleted();
-  write(DONE_KEY, [{ recipe, score, at: new Date().toISOString() }, ...list]);
+  const next = [{ recipe, score, at: new Date().toISOString() }, ...list].slice(
+    0,
+    MAX_COMPLETED,
+  );
+  write(DONE_KEY, next);
 }

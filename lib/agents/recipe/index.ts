@@ -103,12 +103,10 @@ export async function recommendRecipes(
     sourceNote = "開發模式：未設定 GEMINI_API_KEY，先以範例資料展示流程。";
   }
 
-  // 硬性過濾：沒有的工具不推薦；過敏／飲食限制食材必須排除
+  // 硬性過濾：沒有的工具不推薦（不 fallback，避免推薦到使用者做不了的菜）；
+  // 過敏／飲食限制食材必須排除。兩者皆為硬性把關，過濾後為空就回「找不到」。
   const byTools = filterByTools(candidates, input.profile.kitchen_tools);
-  const usable = filterByRestrictions(
-    byTools.length > 0 ? byTools : candidates,
-    input.profile.dietary_restrictions,
-  );
+  const usable = filterByRestrictions(byTools, input.profile.dietary_restrictions);
 
   if (usable.length === 0) {
     return {
@@ -179,7 +177,8 @@ function toRecipe(r: RawRecipe, index: number): Recipe | null {
   });
 
   return {
-    id: `ai-${index}-${slug(name)}`,
+    // 以內容雜湊產生 id：同一份食譜穩定、不同食譜不撞（避免 localStorage 收藏/進度/作品集串味）
+    id: `ai-${slug(name)}-${hashString(name + JSON.stringify(ingredients) + JSON.stringify(steps))}`,
     recipe_name: name,
     difficulty_level,
     estimated_time_minutes: estimateTimeMinutes(steps),
@@ -192,6 +191,15 @@ function toRecipe(r: RawRecipe, index: number): Recipe | null {
 
 function slug(name: string): string {
   return name.replace(/\s+/g, "-").slice(0, 12);
+}
+
+/** 簡易字串雜湊（產生穩定、碰撞率低的 id 後綴） */
+function hashString(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  return (h >>> 0).toString(36);
 }
 
 /** 火力正規化：AI 對免開火步驟常回「無/免」等，統一轉為無（不顯示火力標籤） */
@@ -219,7 +227,7 @@ function mockRecipes(ingredients: string[]): Recipe[] {
   const main = ingredients[0] ?? "食材";
   return [
     {
-      id: "mock-egg",
+      id: `mock-${main}-egg`,
       recipe_name: `${main}炒蛋`,
       difficulty_level: "新手",
       estimated_time_minutes: 12,
@@ -239,7 +247,7 @@ function mockRecipes(ingredients: string[]): Recipe[] {
       finished_dish_standard: `蛋色金黃蓬鬆，${main}熟透但仍保有色澤，整體不出水、不焦黑。`,
     },
     {
-      id: "mock-soup",
+      id: `mock-${main}-soup`,
       recipe_name: `${main}蛋花湯`,
       difficulty_level: "新手",
       estimated_time_minutes: 15,
@@ -258,7 +266,7 @@ function mockRecipes(ingredients: string[]): Recipe[] {
       finished_dish_standard: `湯色清澈微紅，蛋花細緻不結塊，${main}軟而不爛。`,
     },
     {
-      id: "mock-salad",
+      id: `mock-${main}-salad`,
       recipe_name: `涼拌${main}`,
       difficulty_level: "新手",
       estimated_time_minutes: 10,
@@ -277,7 +285,7 @@ function mockRecipes(ingredients: string[]): Recipe[] {
       finished_dish_standard: `色澤鮮綠、口感爽脆，醬汁均勻不積水。`,
     },
     {
-      id: "mock-airfry",
+      id: `mock-${main}-airfry`,
       recipe_name: `氣炸${main}`,
       difficulty_level: "普通",
       estimated_time_minutes: 20,
@@ -296,7 +304,7 @@ function mockRecipes(ingredients: string[]): Recipe[] {
       finished_dish_standard: `表面金黃帶焦香，內部軟熟多汁，不出過多水分。`,
     },
     {
-      id: "mock-bake",
+      id: `mock-${main}-bake`,
       recipe_name: `烤箱焗${main}`,
       difficulty_level: "需要經驗",
       estimated_time_minutes: 40,

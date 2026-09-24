@@ -84,6 +84,7 @@ function Cook() {
   function goStep(n: number) {
     setStep(n);
     setRepeated(false);
+    setQa([]); // 換步驟清空問答，避免上一步的問題殘留在這一步下方
     if (recipe) {
       setCurrentStep(recipe, n);
       if (n > total) setStatus(recipe, "已完成");
