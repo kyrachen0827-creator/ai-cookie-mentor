@@ -178,9 +178,18 @@ function RecommendList() {
                   食材：{r.ingredients.map((i) => i.name).join("、")}
                 </p>
               </div>
-              {/* 成品圖（風格化縮圖） */}
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-herb/15 text-4xl ring-1 ring-brand-border">
-                {dishEmoji(r.recipe_name)}
+              {/* 成品圖：AI 生成成功則顯示真圖，否則退回風格化 emoji */}
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary/15 to-herb/15 text-4xl ring-1 ring-brand-border">
+                {images[r.id] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={images[r.id]}
+                    alt={r.recipe_name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  dishEmoji(r.recipe_name)
+                )}
               </div>
             </div>
             <div className="mt-4 flex items-center gap-2">
