@@ -4,10 +4,13 @@
 /**
  * 酷嗑 首頁 / Landing（product-spec 故事主線 + MVP 第 1 項入口）
  *
- * Hero：廚房背景照 + 大搜尋列 + 熱門食材快選（→ /recommend）+ 番茄炒蛋成品預覽卡。
- * 下方以 1 選菜 → 2 陪做 → 3 評分 的使用流程呈現（不用「N 段 AI」框架）。
+ * UX 重構（2026/09/27）：從「食譜搜尋」敘事改為「AI 陪你把一道菜做完」敘事。
+ * - Hero 主 CTA 改為單一行動「帶我做一道菜」，食材輸入降級為次要行動
+ * - 右側改成「陪做 Demo」互動模擬（純前端狀態機，非真實呼叫老師 agent）
+ * - 六步驟旅程敘事取代「選菜/陪做/評分」功能三欄
+ * - 安心感區塊：僅呈現老師 A 版已完成的「隨時文字提問」能力，不展示尚未完工的拍照救援（B 版）
+ * - 我的廚房區塊改寫為「收藏＋進步紀錄」，不承諾口味個人化學習（out-of-scope 明確排除）
  * 圖片為 Gemini 生成的示意圖（public/landing/*），非抄取任何網站圖片。
- * 註：拍照辨識食材屬 out-of-scope，故搜尋列不放拍照辨識功能。
  */
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -38,11 +41,15 @@ export default function HomePage() {
     router.push(`/recommend?ingredients=${encodeURIComponent(ingredients.join(","))}`);
   }
 
+  function focusSearch() {
+    document.getElementById("search")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    inputRef.current?.focus();
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4">
       {/* ===== Hero ===== */}
       <section className="relative mt-4 overflow-hidden rounded-3xl">
-        {/* 背景廚房照 + 讓左側文字可讀的漸層遮罩 */}
         <img
           src="/landing/hero-bg.png"
           alt=""
@@ -60,54 +67,62 @@ export default function HomePage() {
             </span>
 
             <h1 className="font-serif text-4xl font-black leading-tight text-ink md:text-5xl">
-              想吃<span className="text-accent">番茄</span>，
+              第一次做菜，
               <br />
-              卻不知道能做什麼？
+              也可以<span className="text-accent">把它做完</span>。
             </h1>
 
             <p className="mt-4 max-w-md text-ink-soft">
-              從「選菜」到「陪做」再「評分」，三位老師一路陪著你。做到一半沒人可問？做完不知道好不好？我們都幫你顧著。
+              不用懂料理，不用一次看懂整份食譜。AI
+              會一步一步陪你做，卡住隨時可以問，做完還會告訴你做得怎麼樣。
             </p>
 
-            {/* 主搜尋列 */}
-            <div
-              id="search"
-              className="mt-6 flex items-center gap-2 rounded-full bg-white p-1.5 pl-5 shadow-md ring-1 ring-brand-border scroll-mt-24"
+            {/* 主要 CTA：單一、明確 */}
+            <button
+              onClick={focusSearch}
+              className="mt-6 w-fit rounded-full bg-primary px-7 py-3.5 text-base font-bold text-white shadow-md transition hover:bg-primary-dark"
             >
-              <SearchIcon className="h-5 w-5 shrink-0 text-ink-soft" />
-              <input
-                ref={inputRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && search(query)}
-                placeholder="輸入食材，例如：番茄、雞蛋、雞胸肉…"
-                className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-ink-soft/60 md:text-base"
-              />
-              <button
-                onClick={() => search(query)}
-                aria-label="找菜"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-white transition hover:bg-primary-dark"
-              >
-                <SearchIcon className="h-5 w-5" />
-              </button>
-            </div>
+              🍳 帶我做一道菜
+            </button>
 
-            {/* 熱門食材快選 */}
-            <div className="mt-5">
-              <p className="mb-2 text-sm font-medium text-ink-soft">熱門食材</p>
-              <div className="flex flex-wrap gap-2">
+            {/* 次要行動：食材輸入（降級） */}
+            <div className="mt-6">
+              <p className="mb-2 text-sm font-medium text-ink-soft">或者：我冰箱裡有什麼？</p>
+              <div
+                id="search"
+                className="flex items-center gap-2 rounded-full bg-white p-1.5 pl-5 shadow-sm ring-1 ring-brand-border scroll-mt-24"
+              >
+                <SearchIcon className="h-5 w-5 shrink-0 text-ink-soft" />
+                <input
+                  ref={inputRef}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && search(query)}
+                  placeholder="輸入食材，例如：番茄、雞蛋、雞胸肉…"
+                  className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-ink-soft/60 md:text-base"
+                />
+                <button
+                  onClick={() => search(query)}
+                  aria-label="找菜"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-white transition hover:bg-primary-dark"
+                >
+                  <SearchIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
                 {POPULAR.map((p) => (
                   <button
                     key={p.label}
                     onClick={() => search(p.label)}
-                    className="flex flex-col items-center gap-1 rounded-2xl bg-white/90 p-2 ring-1 ring-brand-border transition hover:bg-white"
+                    className="flex items-center gap-1.5 rounded-full bg-white/90 py-1.5 pl-1.5 pr-3 text-xs ring-1 ring-brand-border transition hover:bg-white"
                   >
                     <img
                       src={p.img}
                       alt={p.label}
-                      className="h-12 w-12 rounded-full object-cover"
+                      className="h-6 w-6 rounded-full object-cover"
                     />
-                    <span className="text-xs text-ink">{p.label}</span>
+                    {p.label}
                   </button>
                 ))}
               </div>
@@ -121,74 +136,55 @@ export default function HomePage() {
             </a>
           </div>
 
-          {/* 右側：番茄炒蛋預覽卡 */}
-          <div className="flex items-center justify-center">
-            <div className="w-full max-w-sm rounded-3xl bg-white/95 p-4 shadow-xl ring-1 ring-brand-border">
-              <div className="relative">
-                <img
-                  src="/landing/dish.png"
-                  alt="番茄炒蛋"
-                  className="h-44 w-full rounded-2xl object-cover"
-                />
-                <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-accent shadow-sm">
-                  ♥
-                </span>
-              </div>
-              <h3 className="mt-3 font-serif text-xl font-bold text-ink">番茄炒蛋</h3>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-ink-soft">
-                <span className="rounded-full bg-cream px-2 py-0.5 ring-1 ring-brand-border">
-                  ⏱ 20 分鐘
-                </span>
-                <span className="rounded-full bg-cream px-2 py-0.5 ring-1 ring-brand-border">
-                  難度 簡單
-                </span>
-                <span className="rounded-full bg-cream px-2 py-0.5 ring-1 ring-brand-border">
-                  👥 2 人份
-                </span>
-              </div>
-              <div className="mt-3 flex flex-col gap-2 rounded-2xl bg-cream p-3 text-sm">
-                <IngredientRow img="/landing/tomato.png" name="番茄" amount="2 顆" />
-                <IngredientRow img="/landing/egg.png" name="雞蛋" amount="3 顆" />
-                <IngredientRow img="/landing/scallion.png" name="青蔥" amount="1 根" />
-                <IngredientRow emoji="🧂" name="鹽" amount="適量" />
-              </div>
-            </div>
+          {/* 右側：陪做 Demo（產品最重要的展示，取代原本的食譜預覽卡） */}
+          <div id="demo" className="flex items-center justify-center scroll-mt-24">
+            <CookingDemo />
           </div>
         </div>
       </section>
 
-      {/* ===== 使用流程：1 選菜 → 2 陪做 → 3 評分 ===== */}
+      {/* ===== 完整旅程：從不知道吃什麼，到把菜做完 ===== */}
       <section
-        id="flow"
+        id="journey"
         className="mt-6 rounded-3xl bg-surface/60 px-4 py-10 ring-1 ring-brand-border/60"
       >
-        <div className="grid gap-8 md:grid-cols-3">
-          <FlowStep
-            no="1"
-            title="選菜"
-            emoji="🧊"
-            desc="輸入手邊食材，AI 立刻列出你做得到的菜，難度、時間一次看懂。"
-          />
-          <FlowStep
-            no="2"
-            title="陪做"
-            emoji="🍲"
-            desc="步驟清楚、圖文並茂，火力時間與「怎麼看出做對了」都寫給你，新手也不慌。"
-          />
-          <FlowStep
-            no="3"
-            title="評分"
-            emoji="📷"
-            desc="做完拍一張，AI 從色澤、擺盤、完成度給分與建議，累積你的料理成就。"
-          />
+        <h2 className="mb-8 text-center font-serif text-2xl font-bold text-ink">
+          從「不知道吃什麼」到「把菜做完」
+        </h2>
+        <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3">
+          <JourneyStep no="1" emoji="🧊" title="告訴我你有什麼" desc="輸入手邊或想吃的食材，一種或多種都可以。" />
+          <JourneyStep no="2" emoji="🍽️" title="我幫你挑一道" desc="依你的廚房工具與飲食限制，推薦你做得到的菜。" />
+          <JourneyStep no="3" emoji="👨‍🍳" title="我陪你一步一步做" desc="每一步只給一個動作，火力、時間、怎麼看出做對了都寫清楚。" />
+          <JourneyStep no="4" emoji="💬" title="卡住就問我" desc="看不懂食譜用語、不確定對不對，隨時打字問，我用這一步的食譜回答你。" />
+          <JourneyStep no="5" emoji="📷" title="做完告訴我" desc="拍張成品照，我從色彩、擺盤、完成度給你分項回饋。" />
+          <JourneyStep no="6" emoji="⭐" title="收藏起來，看見進步" desc="喜歡的菜存起來，每次的成品與評語都留在你的作品集裡。" />
         </div>
       </section>
 
-      {/* ===== 我的廚房 ===== */}
+      {/* ===== 安心感：不會做菜也沒關係 ===== */}
+      <section className="mt-6 rounded-3xl bg-white/70 px-4 py-10 ring-1 ring-brand-border/60">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="font-serif text-2xl font-bold text-ink">不會做菜？沒關係。</h2>
+          <p className="mt-2 text-ink-soft">
+            這些擔心很正常——我們把「隨時可以問」做進了陪做的每一步。
+          </p>
+        </div>
+        <div className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
+          <WorryCard worry="不知道怎麼切" />
+          <WorryCard worry="不知道火要開多大" />
+          <WorryCard worry="不知道該不該進行下一步" />
+          <WorryCard worry="看不懂食譜寫的「適量」「炒到香」" />
+        </div>
+        <p className="mx-auto mt-8 max-w-xl text-center font-medium text-ink">
+          💬 卡住的當下，直接打字問我。我會照著這一步的食譜回答你，不會把你丟在半路。
+        </p>
+      </section>
+
+      {/* ===== 我的廚房：收藏與進步紀錄 ===== */}
       <section id="kitchen" className="py-12 text-center">
-        <h2 className="font-serif text-2xl font-bold text-ink">我的廚房</h2>
+        <h2 className="font-serif text-2xl font-bold text-ink">每做完一道，都留下紀錄</h2>
         <p className="mx-auto mt-2 max-w-md text-ink-soft">
-          收藏喜歡的食譜、把每次的成品與評分存進作品集，看著自己越煮越好。
+          收藏喜歡的食譜，把每次的成品照、分項評分都存進作品集，回頭看看自己越煮越上手。
         </p>
         <a
           href="/kitchen"
@@ -205,33 +201,133 @@ export default function HomePage() {
   );
 }
 
-/* ---------- 小元件 ---------- */
+/* ---------- 陪做 Demo（純前端狀態模擬，展示老師 A 版能力：一步一畫面＋隨時提問） ---------- */
 
-function IngredientRow({
-  img,
-  emoji,
-  name,
-  amount,
-}: {
-  img?: string;
-  emoji?: string;
-  name: string;
-  amount: string;
-}) {
+type DemoStep = {
+  title: string;
+  body: string;
+  primary: string;
+  secondary?: string;
+  reply?: string;
+};
+
+const DEMO_STEPS: DemoStep[] = [
+  {
+    title: "備料確認",
+    body: "番茄、雞蛋、蔥都準備好了嗎？",
+    primary: "✅ 都準備好了",
+  },
+  {
+    title: "開火",
+    body: "開中小火，鍋子熱了嗎？",
+    primary: "🔥 開好了",
+    secondary: "💬 我不知道火要多大",
+    reply: "老師：中小火大概是刻度置中，鍋緣冒出一點油煙就是夠熱了。",
+  },
+  {
+    title: "下鍋拌炒",
+    body: "番茄下鍋，炒到邊緣微微出水。",
+    primary: "✅ 做好了",
+    secondary: "💬 這樣對嗎？",
+    reply: "老師：番茄邊緣變軟、開始出水就是對的，可以接著下一步了。",
+  },
+  {
+    title: "完成",
+    body: "淋入蛋液拌炒均勻，起鍋！",
+    primary: "🎉 完成這道菜",
+  },
+];
+
+function CookingDemo() {
+  const [step, setStep] = useState(0);
+  const [reply, setReply] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const current = DEMO_STEPS[step];
+
+  function handlePrimary() {
+    if (step === DEMO_STEPS.length - 1) {
+      setDone(true);
+      return;
+    }
+    setStep((s) => s + 1);
+    setReply(null);
+  }
+
+  function handleSecondary() {
+    if (current.reply) setReply(current.reply);
+  }
+
+  function restart() {
+    setStep(0);
+    setReply(null);
+    setDone(false);
+  }
+
   return (
-    <div className="flex items-center gap-2">
-      {img ? (
-        <img src={img} alt={name} className="h-6 w-6 rounded-full object-cover" />
+    <div className="w-full max-w-sm rounded-3xl bg-white/95 p-5 shadow-xl ring-1 ring-brand-border">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="font-serif text-lg font-bold text-ink">番茄炒蛋 · 陪做中</span>
+        <span className="rounded-full bg-cream px-2.5 py-0.5 text-xs font-medium text-ink-soft ring-1 ring-brand-border">
+          {done ? "完成" : `Step ${step + 1} / ${DEMO_STEPS.length}`}
+        </span>
+      </div>
+
+      {done ? (
+        <div className="flex flex-col items-center gap-3 rounded-2xl bg-cream p-6 text-center">
+          <span className="text-4xl">🎉</span>
+          <p className="font-semibold text-ink">這道菜做完了！</p>
+          <p className="text-sm text-ink-soft">
+            接下來拍照給評審看看，就能拿到色彩、擺盤、完成度的回饋。
+          </p>
+          <button
+            onClick={restart}
+            className="mt-1 rounded-full bg-surface px-4 py-1.5 text-sm font-medium text-ink ring-1 ring-brand-border hover:bg-white"
+          >
+            再看一次示範
+          </button>
+        </div>
       ) : (
-        <span className="flex h-6 w-6 items-center justify-center text-base">{emoji}</span>
+        <>
+          <div className="rounded-2xl bg-cream p-4">
+            <p className="text-xs font-medium text-ink-soft">{current.title}</p>
+            <p className="mt-1 text-base font-medium text-ink">{current.body}</p>
+          </div>
+
+          {reply && (
+            <p className="mt-3 rounded-2xl bg-primary/10 p-3 text-sm text-primary-dark">
+              {reply}
+            </p>
+          )}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              onClick={handlePrimary}
+              className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark"
+            >
+              {current.primary}
+            </button>
+            {current.secondary && (
+              <button
+                onClick={handleSecondary}
+                className="rounded-full bg-surface px-4 py-2 text-sm font-medium text-ink-soft ring-1 ring-brand-border transition hover:text-ink"
+              >
+                {current.secondary}
+              </button>
+            )}
+          </div>
+        </>
       )}
-      <span className="text-ink">{name}</span>
-      <span className="ml-auto text-ink-soft">{amount}</span>
+
+      <p className="mt-4 text-center text-xs text-ink-soft">
+        示範畫面，實際陪做以真實食譜步驟為準
+      </p>
     </div>
   );
 }
 
-function FlowStep({
+/* ---------- 小元件 ---------- */
+
+function JourneyStep({
   no,
   title,
   emoji,
@@ -253,6 +349,15 @@ function FlowStep({
         </h3>
         <p className="mt-1 text-sm leading-relaxed text-ink-soft">{desc}</p>
       </div>
+    </div>
+  );
+}
+
+function WorryCard({ worry }: { worry: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-cream px-4 py-3 text-sm ring-1 ring-brand-border">
+      <span className="text-lg">😥</span>
+      <span className="text-ink">{worry}</span>
     </div>
   );
 }

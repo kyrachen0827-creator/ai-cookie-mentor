@@ -7,12 +7,10 @@ import { useState } from "react";
  * 酷嗑 全站頁首
  *
  * 桌機顯示橫向導覽；手機用漢堡選單（修 U6：手機也能進我的廚房/設定等）。
- * nav 對應三段 AI 與作品集、設定。
+ * nav 以使用者任務為主，而非系統功能分類。
  */
 const NAV = [
-  { href: "/#search", label: "選菜" },
-  { href: "/#teach", label: "陪做" },
-  { href: "/#judge", label: "評分" },
+  { href: "/#search", label: "今天吃什麼" },
   { href: "/kitchen", label: "我的廚房" },
   { href: "/setup", label: "設定" },
 ];
@@ -44,7 +42,7 @@ export default function Header() {
             href="/#search"
             className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark"
           >
-            開始做菜
+            🍳 帶我做一道菜
           </Link>
           {/* 手機漢堡鈕 */}
           <button
