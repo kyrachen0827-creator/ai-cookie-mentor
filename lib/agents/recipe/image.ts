@@ -8,6 +8,13 @@ import "server-only";
  */
 import { generateImage } from "@/lib/ai/gemini";
 
+/**
+ * 依菜名快取生成結果（含 in-flight promise，避免同名同時多次呼叫）。
+ * 常見菜名（如「番茄炒蛋」）第一次生成後，之後都直接讀快取，省 API 成本與等待時間。
+ * 僅存於行程記憶體，重啟後清空；Phase 1 先不落 DB。
+ */
+const imageCache = new Map<string, Promise<string>>();
+
 function buildImagePrompt(name: string, standard?: string): string {
   return [
     `台灣家常菜「${name}」的成品照片。`,
@@ -24,5 +31,14 @@ export async function generateDishImage(
   name: string,
   standard?: string,
 ): Promise<string> {
-  return generateImage(buildImagePrompt(name, standard));
+  const key = name.trim();
+  const cached = imageCache.get(key);
+  if (cached) return cached;
+
+  const promise = generateImage(buildImagePrompt(name, standard)).catch((err) => {
+    imageCache.delete(key); // 失敗不快取，下次可重試
+    throw err;
+  });
+  imageCache.set(key, promise);
+  return promise;
 }
