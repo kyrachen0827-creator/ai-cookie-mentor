@@ -9,6 +9,8 @@ import "server-only";
  */
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-3.6-flash";
+const GEMINI_IMAGE_MODEL =
+  process.env.GEMINI_IMAGE_MODEL ?? "gemini-2.5-flash-image";
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export function hasGeminiKey(): boolean {
@@ -72,4 +74,46 @@ export async function generateText(
   const text: string | undefined =
     data?.candidates?.[0]?.content?.parts?.[0]?.text;
   return text ?? "";
+}
+
+/**
+ * 呼叫 Gemini 影像模型生成一張圖，回傳 data URL（base64）。
+ * 用於生成食譜成品示意圖（新生成、非抄取任何網站圖片）。
+ */
+export async function generateImage(prompt: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("缺少 GEMINI_API_KEY。");
+  }
+
+  const res = await fetch(
+    `${GEMINI_ENDPOINT}/${GEMINI_IMAGE_MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Gemini 影像 API 錯誤 (${res.status}): ${detail}`);
+  }
+
+  const data = await res.json();
+  const parts: Array<Record<string, unknown>> =
+    data?.candidates?.[0]?.content?.parts ?? [];
+  for (const p of parts) {
+    const inline = (p.inlineData ?? p.inline_data) as
+      | { data?: string; mimeType?: string; mime_type?: string }
+      | undefined;
+    if (inline?.data) {
+      const mime = inline.mimeType ?? inline.mime_type ?? "image/png";
+      return `data:${mime};base64,${inline.data}`;
+    }
+  }
+  throw new Error("影像回傳為空");
 }

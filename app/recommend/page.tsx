@@ -51,7 +51,30 @@ function RecommendList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [favs, setFavs] = useState<Set<string>>(new Set());
+  const [images, setImages] = useState<Record<string, string>>({});
   const fetchedFor = useRef<string>("");
+  const imgRequested = useRef<Set<string>>(new Set());
+
+  // 逐張延遲生成成品圖（不阻塞推薦；失敗就維持 emoji placeholder）
+  useEffect(() => {
+    recipes.forEach((r) => {
+      if (imgRequested.current.has(r.id)) return;
+      imgRequested.current.add(r.id);
+      fetch("/api/agents/recipe/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: r.recipe_name,
+          standard: r.finished_dish_standard,
+        }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((d) => {
+          if (d?.dataUrl) setImages((prev) => ({ ...prev, [r.id]: d.dataUrl }));
+        })
+        .catch(() => {});
+    });
+  }, [recipes]);
 
   useEffect(() => {
     const key = ingredients.join(",");
