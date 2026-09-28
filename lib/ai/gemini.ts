@@ -79,6 +79,10 @@ export async function generateText(
 /**
  * 呼叫 Gemini 影像模型生成一張圖，回傳 data URL（base64）。
  * 用於生成食譜成品示意圖（新生成、非抄取任何網站圖片）。
+ *
+ * 推薦頁會同時對 3–5 道菜並發呼叫這支 API，Gemini 影像模型的每分鐘配額
+ * 偏緊，很容易撞到暫時性 429（RESOURCE_EXHAUSTED）。原本一次失敗就永久
+ * 掉回 emoji placeholder；改為對 429 做少量重試＋退避，減少非必要的降級。
  */
 export async function generateImage(prompt: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -86,34 +90,48 @@ export async function generateImage(prompt: string): Promise<string> {
     throw new Error("缺少 GEMINI_API_KEY。");
   }
 
-  const res = await fetch(
-    `${GEMINI_ENDPOINT}/${GEMINI_IMAGE_MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-      }),
-    },
-  );
+  const maxAttempts = 3;
+  let lastError: Error | undefined;
 
-  if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(`Gemini 影像 API 錯誤 (${res.status}): ${detail}`);
-  }
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const res = await fetch(
+      `${GEMINI_ENDPOINT}/${GEMINI_IMAGE_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+        }),
+      },
+    );
 
-  const data = await res.json();
-  const parts: Array<Record<string, unknown>> =
-    data?.candidates?.[0]?.content?.parts ?? [];
-  for (const p of parts) {
-    const inline = (p.inlineData ?? p.inline_data) as
-      | { data?: string; mimeType?: string; mime_type?: string }
-      | undefined;
-    if (inline?.data) {
-      const mime = inline.mimeType ?? inline.mime_type ?? "image/png";
-      return `data:${mime};base64,${inline.data}`;
+    if (!res.ok) {
+      const detail = await res.text();
+      lastError = new Error(`Gemini 影像 API 錯誤 (${res.status}): ${detail}`);
+      // 429 是暫時性流量限制，值得重試；其他錯誤（如 400 壞請求）重試也沒用，直接丟出。
+      if (res.status === 429 && attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 1200 * attempt));
+        continue;
+      }
+      throw lastError;
     }
+
+    const data = await res.json();
+    const parts: Array<Record<string, unknown>> =
+      data?.candidates?.[0]?.content?.parts ?? [];
+    for (const p of parts) {
+      const inline = (p.inlineData ?? p.inline_data) as
+        | { data?: string; mimeType?: string; mime_type?: string }
+        | undefined;
+      if (inline?.data) {
+        const mime = inline.mimeType ?? inline.mime_type ?? "image/png";
+        return `data:${mime};base64,${inline.data}`;
+      }
+    }
+    // 模型偶爾只回文字、沒附圖（沒有配額問題），這種情況重試通常也沒用，直接丟出。
+    throw new Error("影像回傳為空");
   }
-  throw new Error("影像回傳為空");
+
+  throw lastError ?? new Error("影像生成失敗");
 }

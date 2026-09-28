@@ -60,24 +60,28 @@ function RecommendList() {
   const fetchedFor = useRef<string>("");
   const imgRequested = useRef<Set<string>>(new Set());
 
-  // 逐張延遲生成成品圖（不阻塞推薦；失敗就維持 emoji placeholder）
+  // 逐張延遲生成成品圖（不阻塞推薦；失敗就維持 emoji placeholder）。
+  // 錯開發送時間，降低同時打 3–5 個請求撞到 Gemini 影像模型每分鐘配額的機率
+  // （API 端也有 429 重試，這裡是雙重保險，兩邊都能減少非必要的 emoji 降級）。
   useEffect(() => {
-    recipes.forEach((r) => {
+    recipes.forEach((r, i) => {
       if (imgRequested.current.has(r.id)) return;
       imgRequested.current.add(r.id);
-      fetch("/api/agents/recipe/image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: r.recipe_name,
-          standard: r.finished_dish_standard,
-        }),
-      })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((d) => {
-          if (d?.dataUrl) setImages((prev) => ({ ...prev, [r.id]: d.dataUrl }));
+      setTimeout(() => {
+        fetch("/api/agents/recipe/image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: r.recipe_name,
+            standard: r.finished_dish_standard,
+          }),
         })
-        .catch(() => {});
+          .then((res) => (res.ok ? res.json() : null))
+          .then((d) => {
+            if (d?.dataUrl) setImages((prev) => ({ ...prev, [r.id]: d.dataUrl }));
+          })
+          .catch(() => {});
+      }, i * 600);
     });
   }, [recipes]);
 

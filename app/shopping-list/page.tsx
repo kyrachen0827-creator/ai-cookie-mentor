@@ -57,6 +57,10 @@ function ShoppingList() {
     });
   }
 
+  function checkAll() {
+    setOwned(new Set(items.map((i) => i.key)));
+  }
+
   const allReady = items.length > 0 && owned.size === items.length;
   const have = items.filter((i) => owned.has(i.key));
   const missing = items.filter((i) => !owned.has(i.key));
@@ -126,9 +130,17 @@ function ShoppingList() {
       {/* 🛒 還需要準備 */}
       {missing.length > 0 && (
         <section>
-          <h2 className="mb-2 text-sm font-semibold text-ink">
-            🛒 {t("Still Need", "還需要準備")}（{missing.length} {t("items", "項")}）
-          </h2>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-ink">
+              🛒 {t("Still Need", "還需要準備")}（{missing.length} {t("items", "項")}）
+            </h2>
+            <button
+              onClick={checkAll}
+              className="shrink-0 text-xs font-medium text-primary hover:text-primary-dark"
+            >
+              {t("✓ I have everything", "✓ 全部我都有")}
+            </button>
+          </div>
           <ul className="flex flex-col gap-2">
             {missing.map((item) => (
               <li key={item.key}>
