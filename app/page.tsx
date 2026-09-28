@@ -12,7 +12,7 @@
  * - 我的廚房區塊改寫為「收藏＋進步紀錄」，不承諾口味個人化學習（out-of-scope 明確排除）
  * 圖片為 Gemini 生成的示意圖（public/landing/*），非抄取任何網站圖片。
  */
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 const POPULAR = [
@@ -59,24 +59,24 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-cream via-cream/90 to-cream/40" />
         <div className="absolute inset-0 bg-gradient-to-t from-cream/80 to-transparent md:hidden" />
 
-        {/* 食材裝飾：讓 Hero 更有「廚房正在發生事情」的感覺，不整齊排列、部分露出邊緣 */}
+        {/* 食材裝飾：讓 Hero 更有「廚房正在發生事情」的感覺，散落在外側邊緣、不整齊排列 */}
         <img
           src="/landing/mushroom.png"
           alt=""
           aria-hidden
-          className="pointer-events-none absolute -right-5 top-8 hidden h-24 w-24 rotate-[14deg] rounded-full object-cover opacity-90 shadow-lg md:block"
-        />
-        <img
-          src="/landing/scallion.png"
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute right-16 top-1 hidden h-16 w-16 -rotate-12 rounded-full object-cover opacity-90 shadow-md lg:block"
+          className="pointer-events-none absolute -left-6 top-10 hidden h-24 w-24 -rotate-12 rounded-full object-cover opacity-90 shadow-lg md:block"
         />
         <img
           src="/landing/tomato.png"
           alt=""
           aria-hidden
-          className="pointer-events-none absolute bottom-4 right-6 hidden h-20 w-20 rotate-6 rounded-full object-cover opacity-90 shadow-lg md:block"
+          className="pointer-events-none absolute -left-4 bottom-6 hidden h-20 w-20 rotate-6 rounded-full object-cover opacity-90 shadow-lg md:block"
+        />
+        <img
+          src="/landing/egg.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute -right-4 top-4 hidden h-16 w-16 rotate-[14deg] rounded-full object-cover opacity-90 shadow-md lg:block"
         />
 
         <div className="relative grid gap-8 p-6 md:grid-cols-2 md:p-10">
@@ -157,9 +157,30 @@ export default function HomePage() {
             </a>
           </div>
 
-          {/* 右側：陪做 Demo（產品最重要的展示，取代原本的食譜預覽卡） */}
-          <div id="demo" className="flex items-center justify-center scroll-mt-24">
-            <CookingDemo />
+          {/* 右側：番茄炒蛋成品大圖為主視覺，陪做 Demo 卡疊在圖片右上角 */}
+          <div id="demo" className="flex items-center justify-center scroll-mt-24 md:justify-end">
+            <div className="relative w-full max-w-md pt-8">
+              <img
+                src="/landing/dish.png"
+                alt="番茄炒蛋"
+                className="h-72 w-full rounded-3xl object-cover shadow-xl ring-1 ring-brand-border sm:h-80"
+              />
+              <span className="absolute bottom-3 left-4 z-10 rotate-[-4deg] rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-accent shadow-sm ring-1 ring-brand-border">
+                簡單又好吃 ✨
+              </span>
+              <img
+                src="/landing/scallion.png"
+                alt=""
+                aria-hidden
+                className="pointer-events-none absolute -bottom-5 -right-3 hidden h-16 w-16 rotate-6 rounded-full object-cover opacity-90 shadow-md sm:block"
+              />
+              <div className="absolute -top-4 right-0 w-[70%] max-w-[260px] sm:-right-8">
+                <CookingDemo />
+              </div>
+              <p className="mt-3 text-center text-xs text-ink-soft">
+                示範畫面，實際陪做以真實食譜步驟為準
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -175,11 +196,11 @@ export default function HomePage() {
         {/* 冰箱走到餐桌的路徑感：食材/料理照取代部分 emoji、少量高低錯落，不做成六張一樣的資訊卡 */}
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3">
           <JourneyStep no="1" img="/landing/tomato.png" title="告訴我你有什麼" desc="輸入手邊或想吃的食材，一種或多種都可以。" />
-          <JourneyStep no="2" emoji="🍽️" title="我幫你挑一道" desc="依你的廚房工具與飲食限制，推薦你做得到的菜。" offset />
+          <JourneyStep no="2" img="/landing/dish-chicken-salad.png" title="我幫你挑一道" desc="依你的廚房工具與飲食限制，推薦你做得到的菜。" offset />
           <JourneyStep no="3" img="/landing/dish.png" title="我陪你一步一步做" desc="每一步只給一個動作，火力、時間、怎麼看出做對了都寫清楚。" />
-          <JourneyStep no="4" emoji="💬" title="卡住就問我" desc="看不懂食譜用語、不確定對不對，隨時打字問，我用這一步的食譜回答你。" offset />
-          <JourneyStep no="5" emoji="📷" title="做完告訴我" desc="拍張成品照，我從色彩、擺盤、完成度給你分項回饋。" />
-          <JourneyStep no="6" img="/landing/dish-pepper-chicken.png" title="收藏起來，看見進步" desc="喜歡的菜存起來，每次的成品與評語都留在你的作品集裡。" offset />
+          <JourneyStep no="4" icon={<RobotChatIcon className="h-8 w-8" />} title="卡住就問我" desc="看不懂食譜用語、不確定對不對，隨時打字問，我用這一步的食譜回答你。" offset />
+          <JourneyStep no="5" img="/landing/dish-pepper-chicken.png" title="做完告訴我" desc="拍張成品照，我從色彩、擺盤、完成度給你分項回饋。" />
+          <JourneyStep no="6" emoji="⭐" title="收藏起來，看見進步" desc="喜歡的菜存起來，每次的成品與評語都留在你的作品集裡。" offset />
         </div>
       </section>
 
@@ -191,23 +212,51 @@ export default function HomePage() {
             這些擔心很正常——我們把「隨時可以問」做進了陪做的每一步。
           </p>
         </div>
-        <div className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
-          <WorryCard worry="不知道怎麼切" />
-          <WorryCard worry="不知道火要開多大" />
-          <WorryCard worry="不知道該不該進行下一步" />
-          <WorryCard worry="看不懂食譜寫的「適量」「炒到香」" />
+
+        <div className="mx-auto mt-8 grid max-w-4xl gap-8 md:grid-cols-2 md:items-center">
+          {/* 真實料理情境：切番茄照片 */}
+          <div className="relative mx-auto w-full max-w-sm">
+            <img
+              src="/landing/prep-tomato.png"
+              alt="切番茄示範"
+              className="h-56 w-full rounded-3xl object-cover shadow-lg ring-1 ring-brand-border sm:h-64"
+            />
+            <span className="absolute -bottom-3 left-4 rotate-[-3deg] rounded-full bg-white px-3 py-1 text-xs font-medium text-ink shadow-sm ring-1 ring-brand-border">
+              番茄切這樣就可以！
+            </span>
+          </div>
+
+          <div>
+            {/* 情境展示：卡住時真的可以直接問，不是 FAQ */}
+            <div className="flex flex-col gap-2">
+              <div className="ml-auto flex max-w-[85%] items-end gap-2">
+                <p className="rounded-2xl rounded-tr-sm bg-cream px-4 py-2 text-sm text-ink ring-1 ring-brand-border">
+                  番茄到底要切多大？
+                </p>
+                <span className="mb-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface text-xs ring-1 ring-brand-border">
+                  🙋
+                </span>
+              </div>
+              <div className="mr-auto flex max-w-[85%] items-end gap-2">
+                <span className="mb-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-white">
+                  酷
+                </span>
+                <p className="rounded-2xl rounded-tl-sm bg-primary/10 px-4 py-2 text-sm text-primary-dark">
+                  大概一口大小就可以，不用切得很漂亮 😊
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <WorryCard worry="不知道怎麼切" />
+              <WorryCard worry="不知道火要開多大" />
+              <WorryCard worry="不知道該不該進行下一步" />
+              <WorryCard worry="看不懂食譜寫的「適量」「炒到香」" />
+            </div>
+          </div>
         </div>
 
-        {/* 情境展示：卡住時真的可以直接問，不是 FAQ */}
-        <div className="mx-auto mt-8 flex max-w-md flex-col gap-2">
-          <p className="ml-auto max-w-[80%] rounded-2xl rounded-tr-sm bg-cream px-4 py-2 text-sm text-ink ring-1 ring-brand-border">
-            番茄到底要切多大？
-          </p>
-          <p className="mr-auto max-w-[80%] rounded-2xl rounded-tl-sm bg-primary/10 px-4 py-2 text-sm text-primary-dark">
-            大概一口大小就可以，不用切得很漂亮 😊
-          </p>
-        </div>
-        <p className="mx-auto mt-6 max-w-xl text-center font-medium text-ink">
+        <p className="mx-auto mt-8 max-w-xl text-center font-medium text-ink">
           💬 卡住的當下，直接打字問我。我會照著這一步的食譜回答你，不會把你丟在半路。
         </p>
       </section>
@@ -221,9 +270,9 @@ export default function HomePage() {
 
         {/* 真的跟 AI 做完過這些料理，不是食譜推薦 */}
         <div className="mx-auto mt-6 flex max-w-md justify-center gap-4">
-          <CompletedDish img="/landing/dish.png" name="番茄炒蛋" rotate="-rotate-3" />
-          <CompletedDish img="/landing/dish-pepper-chicken.png" name="黑胡椒雞" rotate="rotate-2" />
-          <CompletedDish img="/landing/dish-chicken-salad.png" name="雞肉沙拉" rotate="-rotate-2" />
+          <CompletedDish img="/landing/dish.png" name="番茄炒蛋" meta="⭐ 4.8 · 20 分鐘" rotate="-rotate-3" />
+          <CompletedDish img="/landing/dish-pepper-chicken.png" name="香煎雞胸肉" meta="⭐ 4.5 · 25 分鐘" rotate="rotate-2" />
+          <CompletedDish img="/landing/dish-chicken-salad.png" name="蔬菜雞肉沙拉" meta="⭐ 4.7 · 15 分鐘" rotate="-rotate-2" />
         </div>
 
         <a
@@ -304,60 +353,57 @@ function CookingDemo() {
   }
 
   return (
-    <div className="w-full max-w-sm rounded-3xl bg-white/95 p-5 shadow-xl ring-1 ring-brand-border">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="font-serif text-lg font-bold text-ink">番茄炒蛋 · 陪做中</span>
-        <span className="rounded-full bg-cream px-2.5 py-0.5 text-xs font-medium text-ink-soft ring-1 ring-brand-border">
+    <div className="w-full rounded-2xl bg-white/95 p-3.5 shadow-xl ring-1 ring-brand-border sm:p-4">
+      <div className="mb-2 flex items-center justify-between gap-1">
+        <span className="font-serif text-sm font-bold text-ink sm:text-base">番茄炒蛋 · 陪做中</span>
+        <span className="shrink-0 rounded-full bg-cream px-2 py-0.5 text-[10px] font-medium text-ink-soft ring-1 ring-brand-border sm:text-xs">
           {done ? "完成" : `Step ${step + 1} / ${DEMO_STEPS.length}`}
         </span>
       </div>
 
       {/* 這道菜用到的食材：小型真實食材照，強化「正在廚房裡一起做菜」的感覺 */}
-      <div className="mb-3 flex items-center gap-1.5">
-        <img src="/landing/tomato.png" alt="番茄" className="h-6 w-6 rounded-full object-cover ring-2 ring-white" />
-        <img src="/landing/egg.png" alt="雞蛋" className="-ml-2 h-6 w-6 rounded-full object-cover ring-2 ring-white" />
-        <img src="/landing/scallion.png" alt="蔥" className="-ml-2 h-6 w-6 rounded-full object-cover ring-2 ring-white" />
-        <span className="ml-1 text-xs text-ink-soft">番茄、雞蛋、蔥</span>
+      <div className="mb-2 flex items-center gap-1">
+        <img src="/landing/tomato.png" alt="番茄" className="h-5 w-5 rounded-full object-cover ring-2 ring-white" />
+        <img src="/landing/egg.png" alt="雞蛋" className="-ml-2 h-5 w-5 rounded-full object-cover ring-2 ring-white" />
+        <img src="/landing/scallion.png" alt="蔥" className="-ml-2 h-5 w-5 rounded-full object-cover ring-2 ring-white" />
+        <span className="ml-1 text-[11px] text-ink-soft">番茄、雞蛋、蔥</span>
       </div>
 
       {done ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl bg-cream p-6 text-center">
-          <span className="text-4xl">🎉</span>
-          <p className="font-semibold text-ink">這道菜做完了！</p>
-          <p className="text-sm text-ink-soft">
-            接下來拍照給評審看看，就能拿到色彩、擺盤、完成度的回饋。
-          </p>
+        <div className="flex flex-col items-center gap-2 rounded-xl bg-cream p-4 text-center">
+          <span className="text-2xl">🎉</span>
+          <p className="text-sm font-semibold text-ink">這道菜做完了！</p>
           <button
             onClick={restart}
-            className="mt-1 rounded-full bg-surface px-4 py-1.5 text-sm font-medium text-ink ring-1 ring-brand-border hover:bg-white"
+            className="mt-1 rounded-full bg-surface px-3 py-1 text-xs font-medium text-ink ring-1 ring-brand-border hover:bg-white"
           >
             再看一次示範
           </button>
         </div>
       ) : (
         <>
-          <div className="rounded-2xl bg-cream p-4">
-            <p className="text-xs font-medium text-ink-soft">{current.title}</p>
-            <p className="mt-1 text-base font-medium text-ink">{current.body}</p>
+          <div className="rounded-xl bg-cream p-3">
+            <p className="text-[11px] font-medium text-ink-soft">{current.title}</p>
+            <p className="mt-0.5 text-sm font-medium text-ink sm:text-base">{current.body}</p>
           </div>
 
           {reply && (
-            <p className="mt-3 rounded-2xl bg-primary/10 p-3 text-sm text-primary-dark">
+            <p className="mt-2 rounded-xl bg-primary/10 p-2.5 text-xs text-primary-dark sm:text-sm">
               {reply}
             </p>
           )}
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             <button
               onClick={handlePrimary}
-              className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark"
+              className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primary-dark sm:text-sm"
             >
               {current.primary}
             </button>
             {current.secondary && (
               <button
                 onClick={handleSecondary}
-                className="rounded-full bg-surface px-4 py-2 text-sm font-medium text-ink-soft ring-1 ring-brand-border transition hover:text-ink"
+                className="rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-ink-soft ring-1 ring-brand-border transition hover:text-ink sm:text-sm"
               >
                 {current.secondary}
               </button>
@@ -365,10 +411,6 @@ function CookingDemo() {
           </div>
         </>
       )}
-
-      <p className="mt-4 text-center text-xs text-ink-soft">
-        示範畫面，實際陪做以真實食譜步驟為準
-      </p>
     </div>
   );
 }
@@ -380,6 +422,7 @@ function JourneyStep({
   title,
   emoji,
   img,
+  icon,
   desc,
   offset,
 }: {
@@ -387,6 +430,7 @@ function JourneyStep({
   title: string;
   emoji?: string;
   img?: string;
+  icon?: ReactNode;
   desc: string;
   offset?: boolean;
 }) {
@@ -397,6 +441,8 @@ function JourneyStep({
       <div className="mb-3 flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-3xl md:mb-0 md:mr-4">
         {img ? (
           <img src={img} alt="" className="h-full w-full rounded-2xl object-cover" />
+        ) : icon ? (
+          icon
         ) : (
           emoji
         )}
@@ -414,16 +460,19 @@ function JourneyStep({
 function CompletedDish({
   img,
   name,
+  meta,
   rotate,
 }: {
   img: string;
   name: string;
+  meta: string;
   rotate: string;
 }) {
   return (
     <div className={`rounded-xl bg-white p-2 pb-3 shadow-md ring-1 ring-brand-border ${rotate}`}>
       <img src={img} alt={name} className="h-16 w-16 rounded-lg object-cover sm:h-20 sm:w-20" />
-      <p className="mt-1.5 text-center text-xs text-ink-soft">{name}</p>
+      <p className="mt-1.5 text-center text-xs font-medium text-ink">{name}</p>
+      <p className="text-center text-[10px] text-ink-soft">{meta}</p>
     </div>
   );
 }
@@ -438,6 +487,18 @@ function WorryCard({ worry }: { worry: string }) {
 }
 
 /* ---------- 圖示 ---------- */
+
+function RobotChatIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6" y="10" width="20" height="14" rx="5" fill="currentColor" className="text-primary" />
+      <circle cx="12.5" cy="17" r="2" fill="white" />
+      <circle cx="19.5" cy="17" r="2" fill="white" />
+      <path d="M16 6v4" stroke="currentColor" className="text-primary" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="16" cy="4.5" r="1.5" fill="currentColor" className="text-accent" />
+    </svg>
+  );
+}
 
 function SearchIcon({ className }: { className?: string }) {
   return (

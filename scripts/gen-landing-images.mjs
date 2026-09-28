@@ -35,6 +35,11 @@ const items = [
     prompt:
       "Generate a photorealistic top-down image of a fresh chicken salad, shredded poached chicken breast over crisp mixed greens, cherry tomatoes, in a white ceramic bowl on a light wooden table, warm natural light, appetizing food photography, no text, no watermark.",
   },
+  {
+    file: "prep-tomato",
+    prompt:
+      "Generate a photorealistic close-up image of hands using a kitchen knife to dice a fresh red tomato into small cubes on a wooden cutting board, warm natural light, shallow depth of field, appetizing home cooking photography, no text, no watermark, only hands visible (no face).",
+  },
 ];
 
 function img(subject) {
