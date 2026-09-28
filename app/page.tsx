@@ -59,6 +59,26 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-cream via-cream/90 to-cream/40" />
         <div className="absolute inset-0 bg-gradient-to-t from-cream/80 to-transparent md:hidden" />
 
+        {/* 食材裝飾：讓 Hero 更有「廚房正在發生事情」的感覺，不整齊排列、部分露出邊緣 */}
+        <img
+          src="/landing/mushroom.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute -right-5 top-8 hidden h-24 w-24 rotate-[14deg] rounded-full object-cover opacity-90 shadow-lg md:block"
+        />
+        <img
+          src="/landing/scallion.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute right-16 top-1 hidden h-16 w-16 -rotate-12 rounded-full object-cover opacity-90 shadow-md lg:block"
+        />
+        <img
+          src="/landing/tomato.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute bottom-4 right-6 hidden h-20 w-20 rotate-6 rounded-full object-cover opacity-90 shadow-lg md:block"
+        />
+
         <div className="relative grid gap-8 p-6 md:grid-cols-2 md:p-10">
           <div className="flex flex-col justify-center">
             <span className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-surface/90 px-3 py-1 text-xs font-medium text-ink-soft ring-1 ring-brand-border">
@@ -85,9 +105,10 @@ export default function HomePage() {
               🍳 帶我做一道菜
             </button>
 
-            {/* 次要行動：食材輸入（降級） */}
+            {/* 次要行動：食材輸入（降級，但用語更像「跟 AI 說」而非「搜尋」） */}
             <div className="mt-6">
-              <p className="mb-2 text-sm font-medium text-ink-soft">或者：我冰箱裡有什麼？</p>
+              <p className="text-sm font-medium text-ink">🧺 告訴我，你冰箱裡有什麼？</p>
+              <p className="mb-2 text-xs text-ink-soft">有一樣也可以，想到什麼就告訴我。</p>
               <div
                 id="search"
                 className="flex items-center gap-2 rounded-full bg-white p-1.5 pl-5 shadow-sm ring-1 ring-brand-border scroll-mt-24"
@@ -151,13 +172,14 @@ export default function HomePage() {
         <h2 className="mb-8 text-center font-serif text-2xl font-bold text-ink">
           從「不知道吃什麼」到「把菜做完」
         </h2>
+        {/* 冰箱走到餐桌的路徑感：食材/料理照取代部分 emoji、少量高低錯落，不做成六張一樣的資訊卡 */}
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3">
-          <JourneyStep no="1" emoji="🧊" title="告訴我你有什麼" desc="輸入手邊或想吃的食材，一種或多種都可以。" />
-          <JourneyStep no="2" emoji="🍽️" title="我幫你挑一道" desc="依你的廚房工具與飲食限制，推薦你做得到的菜。" />
-          <JourneyStep no="3" emoji="👨‍🍳" title="我陪你一步一步做" desc="每一步只給一個動作，火力、時間、怎麼看出做對了都寫清楚。" />
-          <JourneyStep no="4" emoji="💬" title="卡住就問我" desc="看不懂食譜用語、不確定對不對，隨時打字問，我用這一步的食譜回答你。" />
+          <JourneyStep no="1" img="/landing/tomato.png" title="告訴我你有什麼" desc="輸入手邊或想吃的食材，一種或多種都可以。" />
+          <JourneyStep no="2" emoji="🍽️" title="我幫你挑一道" desc="依你的廚房工具與飲食限制，推薦你做得到的菜。" offset />
+          <JourneyStep no="3" img="/landing/dish.png" title="我陪你一步一步做" desc="每一步只給一個動作，火力、時間、怎麼看出做對了都寫清楚。" />
+          <JourneyStep no="4" emoji="💬" title="卡住就問我" desc="看不懂食譜用語、不確定對不對，隨時打字問，我用這一步的食譜回答你。" offset />
           <JourneyStep no="5" emoji="📷" title="做完告訴我" desc="拍張成品照，我從色彩、擺盤、完成度給你分項回饋。" />
-          <JourneyStep no="6" emoji="⭐" title="收藏起來，看見進步" desc="喜歡的菜存起來，每次的成品與評語都留在你的作品集裡。" />
+          <JourneyStep no="6" img="/landing/dish-pepper-chicken.png" title="收藏起來，看見進步" desc="喜歡的菜存起來，每次的成品與評語都留在你的作品集裡。" offset />
         </div>
       </section>
 
@@ -175,7 +197,17 @@ export default function HomePage() {
           <WorryCard worry="不知道該不該進行下一步" />
           <WorryCard worry="看不懂食譜寫的「適量」「炒到香」" />
         </div>
-        <p className="mx-auto mt-8 max-w-xl text-center font-medium text-ink">
+
+        {/* 情境展示：卡住時真的可以直接問，不是 FAQ */}
+        <div className="mx-auto mt-8 flex max-w-md flex-col gap-2">
+          <p className="ml-auto max-w-[80%] rounded-2xl rounded-tr-sm bg-cream px-4 py-2 text-sm text-ink ring-1 ring-brand-border">
+            番茄到底要切多大？
+          </p>
+          <p className="mr-auto max-w-[80%] rounded-2xl rounded-tl-sm bg-primary/10 px-4 py-2 text-sm text-primary-dark">
+            大概一口大小就可以，不用切得很漂亮 😊
+          </p>
+        </div>
+        <p className="mx-auto mt-6 max-w-xl text-center font-medium text-ink">
           💬 卡住的當下，直接打字問我。我會照著這一步的食譜回答你，不會把你丟在半路。
         </p>
       </section>
@@ -186,6 +218,14 @@ export default function HomePage() {
         <p className="mx-auto mt-2 max-w-md text-ink-soft">
           收藏喜歡的食譜，把每次的成品照、分項評分都存進作品集，回頭看看自己越煮越上手。
         </p>
+
+        {/* 真的跟 AI 做完過這些料理，不是食譜推薦 */}
+        <div className="mx-auto mt-6 flex max-w-md justify-center gap-4">
+          <CompletedDish img="/landing/dish.png" name="番茄炒蛋" rotate="-rotate-3" />
+          <CompletedDish img="/landing/dish-pepper-chicken.png" name="黑胡椒雞" rotate="rotate-2" />
+          <CompletedDish img="/landing/dish-chicken-salad.png" name="雞肉沙拉" rotate="-rotate-2" />
+        </div>
+
         <a
           href="/kitchen"
           className="mt-4 inline-block rounded-full bg-surface px-5 py-2.5 text-sm font-semibold text-ink ring-1 ring-brand-border transition hover:bg-white"
@@ -272,6 +312,14 @@ function CookingDemo() {
         </span>
       </div>
 
+      {/* 這道菜用到的食材：小型真實食材照，強化「正在廚房裡一起做菜」的感覺 */}
+      <div className="mb-3 flex items-center gap-1.5">
+        <img src="/landing/tomato.png" alt="番茄" className="h-6 w-6 rounded-full object-cover ring-2 ring-white" />
+        <img src="/landing/egg.png" alt="雞蛋" className="-ml-2 h-6 w-6 rounded-full object-cover ring-2 ring-white" />
+        <img src="/landing/scallion.png" alt="蔥" className="-ml-2 h-6 w-6 rounded-full object-cover ring-2 ring-white" />
+        <span className="ml-1 text-xs text-ink-soft">番茄、雞蛋、蔥</span>
+      </div>
+
       {done ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl bg-cream p-6 text-center">
           <span className="text-4xl">🎉</span>
@@ -331,17 +379,27 @@ function JourneyStep({
   no,
   title,
   emoji,
+  img,
   desc,
+  offset,
 }: {
   no: string;
   title: string;
-  emoji: string;
+  emoji?: string;
+  img?: string;
   desc: string;
+  offset?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center text-center md:flex-row md:items-start md:text-left">
+    <div
+      className={`flex flex-col items-center text-center md:flex-row md:items-start md:text-left ${offset ? "md:mt-6" : ""}`}
+    >
       <div className="mb-3 flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-3xl md:mb-0 md:mr-4">
-        {emoji}
+        {img ? (
+          <img src={img} alt="" className="h-full w-full rounded-2xl object-cover" />
+        ) : (
+          emoji
+        )}
       </div>
       <div>
         <h3 className="font-serif text-lg font-bold text-ink">
@@ -349,6 +407,23 @@ function JourneyStep({
         </h3>
         <p className="mt-1 text-sm leading-relaxed text-ink-soft">{desc}</p>
       </div>
+    </div>
+  );
+}
+
+function CompletedDish({
+  img,
+  name,
+  rotate,
+}: {
+  img: string;
+  name: string;
+  rotate: string;
+}) {
+  return (
+    <div className={`rounded-xl bg-white p-2 pb-3 shadow-md ring-1 ring-brand-border ${rotate}`}>
+      <img src={img} alt={name} className="h-16 w-16 rounded-lg object-cover sm:h-20 sm:w-20" />
+      <p className="mt-1.5 text-center text-xs text-ink-soft">{name}</p>
     </div>
   );
 }

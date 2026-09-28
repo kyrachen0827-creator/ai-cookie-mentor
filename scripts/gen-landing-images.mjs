@@ -25,6 +25,16 @@ const items = [
   { file: "mushroom", prompt: img("a small pile of fresh white button mushrooms") },
   { file: "greens", prompt: img("a bunch of fresh green leafy bok choy vegetable") },
   { file: "scallion", prompt: img("a few fresh green scallions (green onions)") },
+  {
+    file: "dish-pepper-chicken",
+    prompt:
+      "Generate a photorealistic top-down image of Taiwanese-style black pepper chicken (hei hu jiao ji), pan-seared chicken breast slices glazed with glossy black pepper sauce, garnished with scallion, served in a white ceramic bowl on a light wooden table, warm natural light, appetizing food photography, no text, no watermark.",
+  },
+  {
+    file: "dish-chicken-salad",
+    prompt:
+      "Generate a photorealistic top-down image of a fresh chicken salad, shredded poached chicken breast over crisp mixed greens, cherry tomatoes, in a white ceramic bowl on a light wooden table, warm natural light, appetizing food photography, no text, no watermark.",
+  },
 ];
 
 function img(subject) {
