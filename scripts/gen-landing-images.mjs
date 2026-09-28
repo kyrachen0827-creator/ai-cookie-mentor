@@ -54,6 +54,16 @@ const items = [
   { file: "tool-airfryer", prompt: img("a black digital air fryer with a pull-out basket") },
   { file: "tool-oven", prompt: img("a small black and silver countertop toaster oven") },
   { file: "tool-microwave", prompt: img("a compact white microwave oven") },
+  {
+    file: "journey-ask",
+    prompt:
+      "Generate a photorealistic top-down photo of a smartphone lying on a warm wooden kitchen counter next to fresh tomatoes and herbs, the phone screen glowing softly with a blurred, out-of-focus chat bubble interface (no legible text, no real app UI), warm natural kitchen light, shallow depth of field, no hands, no face, no text, no watermark, no logo.",
+  },
+  {
+    file: "journey-collect",
+    prompt:
+      "Generate a photorealistic top-down photo of a small stack of printed photos of home-cooked dishes scattered on a warm wooden table, the top photo has a small gold star sticker on its corner, warm natural light, appetizing food photography style, no legible text, no watermark, no logo.",
+  },
 ];
 
 function img(subject) {

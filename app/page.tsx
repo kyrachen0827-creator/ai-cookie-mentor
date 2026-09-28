@@ -8,7 +8,7 @@
  * 語系（2026/09/28）：AI Builder Cup 要求繳交材料英文，預設英文、可切中文，見 lib/i18n。
  * 圖片為 Gemini 生成的示意圖（public/landing/*），非抄取任何網站圖片。
  */
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 
@@ -238,7 +238,7 @@ export default function HomePage() {
           />
           <JourneyStep
             no="4"
-            icon={<RobotChatIcon className="h-10 w-10" />}
+            img="/landing/journey-ask.png"
             title={t("Stuck? Just ask", "卡住就問我")}
             desc={t(
               "Don't get a recipe term, not sure it's right — type anytime, and I'll answer using this step's recipe.",
@@ -257,7 +257,7 @@ export default function HomePage() {
           />
           <JourneyStep
             no="6"
-            icon={<StarBadgeIcon className="h-10 w-10" />}
+            img="/landing/journey-collect.png"
             title={t("Save it, see your progress", "收藏起來，看見進步")}
             desc={t(
               "Save dishes you love — every result and note stays in your portfolio.",
@@ -539,17 +539,13 @@ function CookingDemo() {
 function JourneyStep({
   no,
   title,
-  emoji,
   img,
-  icon,
   desc,
   offset,
 }: {
   no: string;
   title: string;
-  emoji?: string;
-  img?: string;
-  icon?: ReactNode;
+  img: string;
   desc: string;
   offset?: boolean;
 }) {
@@ -557,14 +553,8 @@ function JourneyStep({
     <div
       className={`flex flex-col items-center text-center md:flex-row md:items-start md:text-left ${offset ? "md:mt-6" : ""}`}
     >
-      <div className="mb-3 flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-3xl md:mb-0 md:mr-4">
-        {img ? (
-          <img src={img} alt="" className="h-full w-full rounded-2xl object-cover" />
-        ) : icon ? (
-          icon
-        ) : (
-          emoji
-        )}
+      <div className="mb-3 h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-primary/10 md:mb-0 md:mr-4">
+        <img src={img} alt="" className="h-full w-full object-cover" />
       </div>
       <div>
         <h3 className="font-serif text-lg font-bold text-ink">
@@ -606,30 +596,6 @@ function WorryCard({ worry }: { worry: string }) {
 }
 
 /* ---------- 圖示 ---------- */
-
-function RobotChatIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="6" y="10" width="20" height="14" rx="5" fill="currentColor" className="text-primary" />
-      <circle cx="12.5" cy="17" r="2" fill="white" />
-      <circle cx="19.5" cy="17" r="2" fill="white" />
-      <path d="M16 6v4" stroke="currentColor" className="text-primary" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="16" cy="4.5" r="1.5" fill="currentColor" className="text-accent" />
-    </svg>
-  );
-}
-
-function StarBadgeIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M16 3.5l3.4 7.2 7.9.9-5.8 5.5 1.5 7.9-6.9-3.9-6.9 3.9 1.5-7.9-5.8-5.5 7.9-.9z"
-        fill="currentColor"
-        className="text-accent"
-      />
-    </svg>
-  );
-}
 
 function SearchIcon({ className }: { className?: string }) {
   return (
