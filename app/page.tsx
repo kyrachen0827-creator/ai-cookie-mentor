@@ -8,9 +8,10 @@
  * 語系（2026/09/28）：AI Builder Cup 要求繳交材料英文，預設英文、可切中文，見 lib/i18n。
  * 圖片為 Gemini 生成的示意圖（public/landing/*），非抄取任何網站圖片。
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleContext";
+import { listInProgressSessions, type StoredCookingSession } from "@/lib/data/session-client";
 
 const POPULAR = [
   { en: "Tomato", zh: "番茄", img: "/landing/tomato.png" },
@@ -27,6 +28,13 @@ export default function HomePage() {
   const t = (en: string, zh: string) => (locale === "en" ? en : zh);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const [resumeSession, setResumeSession] = useState<StoredCookingSession | null>(null);
+
+  // 中途離開的料理進度先前有存，但沒有任何入口能回去——首頁補上「繼續上次的料理」
+  useEffect(() => {
+    const [latest] = listInProgressSessions();
+    setResumeSession(latest ?? null);
+  }, []);
 
   function search(text: string) {
     const ingredients = text
@@ -47,6 +55,25 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4">
+      {/* ===== 繼續上次的料理：中途離開的進度有存，但先前沒有入口回得去 ===== */}
+      {resumeSession && (
+        <a
+          href={`/cook?recipe=${resumeSession.recipe_id}`}
+          className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-primary/10 px-4 py-3 ring-1 ring-primary/30 transition hover:bg-primary/15"
+        >
+          <span className="flex items-center gap-2 text-sm text-ink">
+            <span className="text-lg">👨‍🍳</span>
+            {t(
+              `Pick up where you left off — ${resumeSession.recipe.recipe_name} (${resumeSession.current_step === 0 ? "prep" : `step ${resumeSession.current_step}/${resumeSession.recipe.steps.length}`})`,
+              `繼續上次沒做完的「${resumeSession.recipe.recipe_name}」（${resumeSession.current_step === 0 ? "備料階段" : `第 ${resumeSession.current_step}/${resumeSession.recipe.steps.length} 步`}）`,
+            )}
+          </span>
+          <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white">
+            {t("Continue →", "繼續 →")}
+          </span>
+        </a>
+      )}
+
       {/* ===== Hero ===== */}
       <section className="relative mt-4 overflow-hidden rounded-3xl">
         <img
