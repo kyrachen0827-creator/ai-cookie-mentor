@@ -5,6 +5,10 @@
  *
  * 讀取推薦頁交棒的「選定食譜」（sessionStorage），列出真實食材與器具，
  * 可勾「我有這個」即時扣除；備齊後進入料理（Phase 2 老師，目前鎖住）。
+ *
+ * UX 微調（2026/09/28）：從「單一打勾清單」改為「我有的／還需要準備」兩組，
+ * checkbox 的意義是「我現在已經準備好這個材料」，而不是單純控制下一步按鈕；
+ * 「還需要準備」加上一鍵複製清單，方便貼到 LINE／備忘錄／購物清單。
  */
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,6 +22,7 @@ function ShoppingList() {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [ready, setReady] = useState(false);
   const [owned, setOwned] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -49,7 +54,19 @@ function ShoppingList() {
   }
 
   const allReady = items.length > 0 && owned.size === items.length;
+  const have = items.filter((i) => owned.has(i.key));
   const missing = items.filter((i) => !owned.has(i.key));
+
+  async function copyMissingList() {
+    const text = [`🛒 ${recipe?.recipe_name ?? ""}`, ...missing.map((i) => i.label)].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* 剪貼簿權限被拒時靜默失敗，使用者可自行選取文字 */
+    }
+  }
 
   if (!ready) {
     return <p className="px-4 py-8 text-ink-soft">載入中…</p>;
@@ -74,47 +91,88 @@ function ShoppingList() {
         </a>
         <h1 className="mt-3 font-serif text-3xl font-bold text-ink">缺料清單</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          {recipe.recipe_name} · 有的先勾起來，剩下 {missing.length} 項要準備。
+          {recipe.recipe_name} · 開煮前，先確認手邊有哪些材料。
         </p>
       </header>
 
-      <ul className="flex flex-col gap-2">
-        {items.map((item) => (
-          <li key={item.key}>
-            <label className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 ring-1 ring-brand-border">
-              <input
-                type="checkbox"
-                checked={owned.has(item.key)}
-                onChange={() => toggle(item.key)}
-                className="h-5 w-5 accent-primary"
-              />
-              <span
-                className={
-                  owned.has(item.key)
-                    ? "text-ink-soft/50 line-through"
-                    : "text-ink"
-                }
-              >
-                {item.label}
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
+      {/* 🧺 我有的：checkbox 代表「我現在已經準備好這個材料」 */}
+      {have.length > 0 && (
+        <section className="mb-4">
+          <h2 className="mb-2 text-sm font-semibold text-ink">🧺 我有的（{have.length} 項）</h2>
+          <ul className="flex flex-col gap-2">
+            {have.map((item) => (
+              <li key={item.key}>
+                <label className="flex items-center gap-3 rounded-2xl bg-herb/10 px-4 py-3 ring-1 ring-brand-border">
+                  <input
+                    type="checkbox"
+                    checked
+                    onChange={() => toggle(item.key)}
+                    className="h-5 w-5 accent-primary"
+                  />
+                  <span className="text-ink-soft/70 line-through">{item.label}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* 🛒 還需要準備 */}
+      {missing.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-ink">🛒 還需要準備（{missing.length} 項）</h2>
+          <ul className="flex flex-col gap-2">
+            {missing.map((item) => (
+              <li key={item.key}>
+                <label className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 ring-1 ring-brand-border">
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    onChange={() => toggle(item.key)}
+                    className="h-5 w-5 accent-primary"
+                  />
+                  <span className="text-ink">{item.label}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+
+          <button
+            onClick={copyMissingList}
+            className="mt-3 flex w-fit items-center gap-1.5 rounded-full bg-cream px-4 py-2 text-sm font-medium text-ink-soft ring-1 ring-brand-border transition hover:text-ink"
+          >
+            {copied ? "已複製 ✓" : "📋 複製缺料清單"}
+          </button>
+        </section>
+      )}
 
       {notableTools(recipe.required_tools).length > 0 && (
-        <p className="mt-3 text-sm text-ink-soft">
+        <p className="mt-4 text-sm text-ink-soft">
           會用到的器具（你已有）：{notableTools(recipe.required_tools).join("、")}
         </p>
       )}
 
-      <button
-        disabled={!allReady}
-        onClick={() => router.push(`/cook?recipe=${recipe.id}`)}
-        className="mt-6 w-full rounded-full bg-primary px-4 py-3 font-semibold text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {allReady ? "備齊了，開始料理" : `還差 ${missing.length} 項就能開始`}
-      </button>
+      {allReady ? (
+        <div className="mt-6 rounded-2xl bg-herb/10 p-4 text-center ring-1 ring-brand-border">
+          <p className="font-semibold text-ink">🎉 材料都準備好了！</p>
+          <button
+            onClick={() => router.push(`/cook?recipe=${recipe.id}`)}
+            className="mt-3 w-full rounded-full bg-primary px-4 py-3 font-semibold text-white transition hover:bg-primary-dark"
+          >
+            開始料理
+          </button>
+        </div>
+      ) : (
+        <div className="mt-6 rounded-2xl bg-surface p-4 text-center ring-1 ring-brand-border">
+          <p className="text-sm text-ink-soft">還有 {missing.length} 樣材料需要準備</p>
+          <button
+            disabled
+            className="mt-3 w-full cursor-not-allowed rounded-full bg-primary px-4 py-3 font-semibold text-white opacity-40"
+          >
+            開始料理
+          </button>
+        </div>
+      )}
     </div>
   );
 }
