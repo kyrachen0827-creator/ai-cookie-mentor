@@ -14,11 +14,15 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Recipe } from "@/lib/data/types";
 import { notableTools } from "@/lib/recipe-tools";
+import { useLocale } from "@/lib/i18n/LocaleContext";
+import { toolLabel } from "@/lib/i18n/labels";
 
 const SELECTED_KEY = "zaohuo.selectedRecipe";
 
 function ShoppingList() {
   const router = useRouter();
+  const { locale } = useLocale();
+  const t = (en: string, zh: string) => (locale === "en" ? en : zh);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [ready, setReady] = useState(false);
   const [owned, setOwned] = useState<Set<string>>(new Set());
@@ -69,15 +73,15 @@ function ShoppingList() {
   }
 
   if (!ready) {
-    return <p className="px-4 py-8 text-ink-soft">載入中…</p>;
+    return <p className="px-4 py-8 text-ink-soft">Loading…</p>;
   }
 
   if (!recipe) {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-8">
-        <p className="text-ink-soft">還沒有選定的食譜。</p>
+        <p className="text-ink-soft">{t("No recipe selected yet.", "還沒有選定的食譜。")}</p>
         <a href="/" className="mt-3 inline-block text-primary underline">
-          回首頁挑一道
+          {t("Back home to pick one", "回首頁挑一道")}
         </a>
       </div>
     );
@@ -87,18 +91,20 @@ function ShoppingList() {
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
       <header className="mb-6">
         <a href="/" className="text-sm text-ink-soft hover:text-ink">
-          ← 回首頁
+          {t("← Home", "← 回首頁")}
         </a>
-        <h1 className="mt-3 font-serif text-3xl font-bold text-ink">缺料清單</h1>
+        <h1 className="mt-3 font-serif text-3xl font-bold text-ink">{t("Shopping List", "缺料清單")}</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          {recipe.recipe_name} · 開煮前，先確認手邊有哪些材料。
+          {recipe.recipe_name} · {t("Check off what you have before you start.", "開煮前，先確認手邊有哪些材料。")}
         </p>
       </header>
 
       {/* 🧺 我有的：checkbox 代表「我現在已經準備好這個材料」 */}
       {have.length > 0 && (
         <section className="mb-4">
-          <h2 className="mb-2 text-sm font-semibold text-ink">🧺 我有的（{have.length} 項）</h2>
+          <h2 className="mb-2 text-sm font-semibold text-ink">
+            🧺 {t("I Have", "我有的")}（{have.length} {t("items", "項")}）
+          </h2>
           <ul className="flex flex-col gap-2">
             {have.map((item) => (
               <li key={item.key}>
@@ -120,7 +126,9 @@ function ShoppingList() {
       {/* 🛒 還需要準備 */}
       {missing.length > 0 && (
         <section>
-          <h2 className="mb-2 text-sm font-semibold text-ink">🛒 還需要準備（{missing.length} 項）</h2>
+          <h2 className="mb-2 text-sm font-semibold text-ink">
+            🛒 {t("Still Need", "還需要準備")}（{missing.length} {t("items", "項")}）
+          </h2>
           <ul className="flex flex-col gap-2">
             {missing.map((item) => (
               <li key={item.key}>
@@ -141,35 +149,38 @@ function ShoppingList() {
             onClick={copyMissingList}
             className="mt-3 flex w-fit items-center gap-1.5 rounded-full bg-cream px-4 py-2 text-sm font-medium text-ink-soft ring-1 ring-brand-border transition hover:text-ink"
           >
-            {copied ? "已複製 ✓" : "📋 複製缺料清單"}
+            {copied ? t("Copied ✓", "已複製 ✓") : t("📋 Copy shopping list", "📋 複製缺料清單")}
           </button>
         </section>
       )}
 
       {notableTools(recipe.required_tools).length > 0 && (
         <p className="mt-4 text-sm text-ink-soft">
-          會用到的器具（你已有）：{notableTools(recipe.required_tools).join("、")}
+          {t("Tools you'll use (already have)", "會用到的器具（你已有）")}：
+          {notableTools(recipe.required_tools).map((tool) => toolLabel(tool, locale)).join(t(", ", "、"))}
         </p>
       )}
 
       {allReady ? (
         <div className="mt-6 rounded-2xl bg-herb/10 p-4 text-center ring-1 ring-brand-border">
-          <p className="font-semibold text-ink">🎉 材料都準備好了！</p>
+          <p className="font-semibold text-ink">{t("🎉 All ingredients ready!", "🎉 材料都準備好了！")}</p>
           <button
             onClick={() => router.push(`/cook?recipe=${recipe.id}`)}
             className="mt-3 w-full rounded-full bg-primary px-4 py-3 font-semibold text-white transition hover:bg-primary-dark"
           >
-            開始料理
+            {t("Start Cooking", "開始料理")}
           </button>
         </div>
       ) : (
         <div className="mt-6 rounded-2xl bg-surface p-4 text-center ring-1 ring-brand-border">
-          <p className="text-sm text-ink-soft">還有 {missing.length} 樣材料需要準備</p>
+          <p className="text-sm text-ink-soft">
+            {t(`${missing.length} item${missing.length === 1 ? "" : "s"} still needed`, `還有 ${missing.length} 樣材料需要準備`)}
+          </p>
           <button
             disabled
             className="mt-3 w-full cursor-not-allowed rounded-full bg-primary px-4 py-3 font-semibold text-white opacity-40"
           >
-            開始料理
+            {t("Start Cooking", "開始料理")}
           </button>
         </div>
       )}
@@ -179,7 +190,7 @@ function ShoppingList() {
 
 export default function ShoppingListPage() {
   return (
-    <Suspense fallback={<p className="px-4 py-8 text-ink-soft">載入中…</p>}>
+    <Suspense fallback={<p className="px-4 py-8 text-ink-soft">Loading…</p>}>
       <ShoppingList />
     </Suspense>
   );

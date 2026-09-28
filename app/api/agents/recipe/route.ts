@@ -13,8 +13,10 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       ingredients?: string[];
       profile?: FoodProfile;
+      locale?: "en" | "zh";
     };
 
+    const locale = body.locale === "zh" ? "zh" : "en";
     const ingredients = (body.ingredients ?? [])
       .map((s) => s.trim())
       .filter(Boolean);
@@ -26,15 +28,15 @@ export async function POST(request: Request) {
 
     if (ingredients.length === 0) {
       return NextResponse.json(
-        { error: "請輸入至少一種食材" },
+        { error: locale === "en" ? "Please enter at least one ingredient" : "請輸入至少一種食材" },
         { status: 400 },
       );
     }
 
-    const result = await recommendRecipes({ ingredients, profile });
+    const result = await recommendRecipes({ ingredients, profile, locale });
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "未知錯誤";
+    const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

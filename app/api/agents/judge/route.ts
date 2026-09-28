@@ -14,11 +14,13 @@ export async function POST(request: Request) {
       recipe?: Recipe;
       sessionLog?: SessionLogEntry[];
       image?: { mimeType?: string; dataBase64?: string };
+      locale?: "en" | "zh";
     };
+    const locale = body.locale === "zh" ? "zh" : "en";
 
     if (!body.recipe || !body.image?.dataBase64 || !body.image?.mimeType) {
       return NextResponse.json(
-        { error: "缺少食譜或成品照片" },
+        { error: locale === "en" ? "Missing recipe or finished dish photo" : "缺少食譜或成品照片" },
         { status: 400 },
       );
     }
@@ -30,11 +32,12 @@ export async function POST(request: Request) {
         mimeType: body.image.mimeType,
         dataBase64: body.image.dataBase64,
       },
+      locale,
     });
 
     return NextResponse.json(verdict);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "未知錯誤";
+    const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -18,6 +18,8 @@ export interface TeacherQuestionInput {
   /** 目前步驟索引（0-based）；備料階段或未進入步驟時為 null */
   stepIndex: number | null;
   question: string;
+  /** 回答語系（比賽要求英文為主，預設 en） */
+  locale?: "en" | "zh";
 }
 
 function buildPrompt(input: TeacherQuestionInput): string {
@@ -37,6 +39,7 @@ function buildPrompt(input: TeacherQuestionInput): string {
     ),
   ].join("\n");
 
+  const en = input.locale === "en";
   return [
     "你是陪料理新手做菜的料理老師，語氣鼓勵、具體、簡短（2–4 句）。",
     "回答規則：",
@@ -44,6 +47,7 @@ function buildPrompt(input: TeacherQuestionInput): string {
     "- 用可觀察的描述（外觀、聲音、氣味），不要用『適量』『炒到有香氣』這種要經驗才懂的說法。",
     "- 若食譜沒涵蓋、或你不確定，直接說「這份食譜沒有特別說明」並給安全、保守的一般建議，不要編造。",
     "- 熟度、食安相關別只憑猜測，一律給時間、溫度或切開檢查的判斷方式。",
+    en ? "- Answer in English, regardless of the language the recipe context below is written in." : "",
     "",
     recipeContext,
     "",
@@ -51,7 +55,9 @@ function buildPrompt(input: TeacherQuestionInput): string {
       ? `使用者目前在第 ${stepIndex! + 1} 步：${step.action}——${step.doneness_cue}`
       : "使用者還在備料階段，尚未開始步驟。",
     `使用者的問題：${question}`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /** 回答使用者在料理過程中的提問。無 key 時回傳保守提示。 */
@@ -59,15 +65,27 @@ export async function answerQuestion(
   input: TeacherQuestionInput,
 ): Promise<string> {
   const q = input.question.trim();
-  if (!q) return "想問什麼都可以，例如「火要多大」「怎麼看有沒有熟」。";
+  const en = input.locale === "en";
+  if (!q) {
+    return en
+      ? 'Ask me anything, like "how hot should the pan be" or "how do I tell it\'s cooked".'
+      : "想問什麼都可以，例如「火要多大」「怎麼看有沒有熟」。";
+  }
 
   if (!hasGeminiKey()) {
-    return "（目前未設定 AI 金鑰，老師暫時無法即時回答。可先照這一步的「怎麼看出做對了」判斷。）";
+    return en
+      ? "(No AI key configured yet, so the teacher can't answer live right now. Follow this step's “how to tell it's right” guidance for now.)"
+      : "（目前未設定 AI 金鑰，老師暫時無法即時回答。可先照這一步的「怎麼看出做對了」判斷。）";
   }
 
   // 關閉思考模式，讓老師回答更即時
   const answer = await generateText(buildPrompt(input), undefined, {
     thinkingBudget: 0,
   });
-  return answer.trim() || "這份食譜沒有特別說明，建議照目前這一步的判斷方式操作即可。";
+  return (
+    answer.trim() ||
+    (en
+      ? "This recipe doesn't specify that — go with this step's guidance for now."
+      : "這份食譜沒有特別說明，建議照目前這一步的判斷方式操作即可。")
+  );
 }

@@ -6,13 +6,18 @@
  * 0-1 廚房工具：作為推薦與老師的硬性篩選。
  * 0-2 過敏／飲食限制、人數。
  * Phase 1 先存 localStorage（見 lib/data/profile-client），之後接資料庫。
+ * 廚房工具內部仍存中文 canonical 值，畫面依語系顯示翻譯標籤（見 lib/i18n/labels）。
  */
 import { useEffect, useState } from "react";
 import { getProfile, saveProfile } from "@/lib/data/profile-client";
+import { useLocale } from "@/lib/i18n/LocaleContext";
+import { toolLabel } from "@/lib/i18n/labels";
 
 const TOOL_OPTIONS = ["電磁爐", "電子鍋", "快煮鍋", "氣炸鍋", "烤箱", "微波爐"];
 
 export default function SetupPage() {
+  const { locale } = useLocale();
+  const t = (en: string, zh: string) => (locale === "en" ? en : zh);
   const [tools, setTools] = useState<string[]>([]);
   const [restrictions, setRestrictions] = useState("");
   const [serving, setServing] = useState(1);
@@ -26,10 +31,10 @@ export default function SetupPage() {
     setServing(p.default_serving_size);
   }, []);
 
-  function toggleTool(t: string) {
+  function toggleTool(tool: string) {
     setSaved(false);
     setTools((prev) =>
-      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
+      prev.includes(tool) ? prev.filter((x) => x !== tool) : [...prev, tool],
     );
   }
 
@@ -48,37 +53,39 @@ export default function SetupPage() {
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8">
       <a href="/" className="text-sm text-ink-soft hover:text-ink">
-        ← 回首頁
+        {t("← Home", "← 回首頁")}
       </a>
       <header className="mb-6 mt-3">
-        <h1 className="font-serif text-3xl font-bold text-ink">基礎設定</h1>
-        <p className="mt-1 text-sm text-ink-soft">這些會影響推薦，之後可隨時修改。</p>
+        <h1 className="font-serif text-3xl font-bold text-ink">{t("Basic Setup", "基礎設定")}</h1>
+        <p className="mt-1 text-sm text-ink-soft">
+          {t("This affects recommendations — you can change it anytime.", "這些會影響推薦，之後可隨時修改。")}
+        </p>
       </header>
 
       <section className="mb-6 rounded-2xl bg-surface p-5 ring-1 ring-brand-border">
-        <h2 className="mb-3 font-semibold text-ink">廚房工具</h2>
+        <h2 className="mb-3 font-semibold text-ink">{t("Kitchen Tools", "廚房工具")}</h2>
         <div className="flex flex-wrap gap-2">
-          {TOOL_OPTIONS.map((t) => (
+          {TOOL_OPTIONS.map((tool) => (
             <button
-              key={t}
-              onClick={() => toggleTool(t)}
+              key={tool}
+              onClick={() => toggleTool(tool)}
               className={`rounded-full px-3 py-1.5 text-sm ring-1 transition ${
-                tools.includes(t)
+                tools.includes(tool)
                   ? "bg-primary text-white ring-primary"
                   : "bg-cream text-ink-soft ring-brand-border hover:text-ink"
               }`}
             >
-              {t}
+              {toolLabel(tool, locale)}
             </button>
           ))}
         </div>
       </section>
 
       <section className="mb-6 rounded-2xl bg-surface p-5 ring-1 ring-brand-border">
-        <h2 className="mb-3 font-semibold text-ink">過敏／飲食限制</h2>
+        <h2 className="mb-3 font-semibold text-ink">{t("Allergies / Dietary Restrictions", "過敏／飲食限制")}</h2>
         <input
           className="w-full rounded-xl bg-cream px-4 py-3 outline-none ring-1 ring-brand-border focus:ring-primary"
-          placeholder="例：海鮮、花生（用逗號分隔）"
+          placeholder={t("e.g. seafood, peanuts (comma separated)", "例：海鮮、花生（用逗號分隔）")}
           value={restrictions}
           onChange={(e) => {
             setSaved(false);
@@ -88,7 +95,7 @@ export default function SetupPage() {
       </section>
 
       <section className="mb-6 rounded-2xl bg-surface p-5 ring-1 ring-brand-border">
-        <h2 className="mb-3 font-semibold text-ink">預設人數</h2>
+        <h2 className="mb-3 font-semibold text-ink">{t("Default Servings", "預設人數")}</h2>
         <input
           type="number"
           min={1}
@@ -105,7 +112,7 @@ export default function SetupPage() {
         onClick={handleSave}
         className="w-full rounded-full bg-primary px-4 py-3 font-semibold text-white transition hover:bg-primary-dark"
       >
-        {saved ? "已儲存 ✓" : "儲存設定"}
+        {saved ? t("Saved ✓", "已儲存 ✓") : t("Save Settings", "儲存設定")}
       </button>
     </div>
   );

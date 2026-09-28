@@ -17,6 +17,8 @@ export interface JudgeInput {
   recipe: Recipe;
   sessionLog?: SessionLogEntry[];
   image: { mimeType: string; dataBase64: string };
+  /** 輸出語系（比賽要求英文為主，預設 en） */
+  locale?: "en" | "zh";
 }
 
 export interface JudgeScoreResult {
@@ -57,11 +59,13 @@ function buildPrompt(input: JudgeInput): string {
           .join("\n")}`
       : "";
 
+  const en = input.locale === "en";
   return [
     "你是料理評審，對照這道菜的「成品標準」評分照片中的成品。語氣鼓勵但客觀，不因鼓勵而灌分。",
     `料理：${recipe.recipe_name}`,
     `成品標準（評分對照基準）：${recipe.finished_dish_standard}`,
     logContext,
+    en ? "IMPORTANT: Write all evidence text and comments in English." : "",
     "",
     "評三個維度，每項 1–5 分，並附「照片中看到什麼」的依據：",
     "- 色彩搭配：食材顏色是否鮮明、搭配是否和諧、有無過度烹煮變色。",
@@ -86,15 +90,20 @@ function buildPrompt(input: JudgeInput): string {
   "strength_comment": "一個具體做得好的點",
   "improvement_comment": "一個具體可操作的改進點"
 }`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export async function scoreDish(input: JudgeInput): Promise<JudgeVerdict> {
+  const en = input.locale === "en";
   if (!hasGeminiKey()) {
     return {
       ok: false,
       retake: true,
-      message: "（目前未設定 AI 金鑰，評審暫時無法評分。）",
+      message: en
+        ? "(No AI key configured yet, so the judge can't score right now.)"
+        : "（目前未設定 AI 金鑰，評審暫時無法評分。）",
     };
   }
 
@@ -107,7 +116,11 @@ export async function scoreDish(input: JudgeInput): Promise<JudgeVerdict> {
     return {
       ok: false,
       retake: true,
-      message: parsed.reason?.trim() || "照片看不太清楚，光線充足、整盤入鏡再拍一張吧。",
+      message:
+        parsed.reason?.trim() ||
+        (en
+          ? "Hard to make out the dish — try better lighting with the whole plate in frame."
+          : "照片看不太清楚，光線充足、整盤入鏡再拍一張吧。"),
     };
   }
 
@@ -120,7 +133,9 @@ export async function scoreDish(input: JudgeInput): Promise<JudgeVerdict> {
     return {
       ok: false,
       retake: true,
-      message: "這張照片不太好評分，換個角度、光線足一點再拍一張吧。",
+      message: en
+        ? "This photo is hard to score — try a different angle with better lighting."
+        : "這張照片不太好評分，換個角度、光線足一點再拍一張吧。",
     };
   }
 
@@ -134,9 +149,12 @@ export async function scoreDish(input: JudgeInput): Promise<JudgeVerdict> {
       doneness_score: doneness,
       doneness_evidence: parsed.doneness_evidence?.trim() || "",
       total_score: color + plating + doneness,
-      strength_comment: parsed.strength_comment?.trim() || "完成一道菜就是很棒的開始！",
+      strength_comment:
+        parsed.strength_comment?.trim() ||
+        (en ? "Finishing a dish is a great start!" : "完成一道菜就是很棒的開始！"),
       improvement_comment:
-        parsed.improvement_comment?.trim() || "下次可以拍清楚一點，方便看細節。",
+        parsed.improvement_comment?.trim() ||
+        (en ? "Try a clearer shot next time to show more detail." : "下次可以拍清楚一點，方便看細節。"),
     },
   };
 }

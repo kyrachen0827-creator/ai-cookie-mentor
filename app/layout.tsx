@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
+import { LocaleProvider } from "@/lib/i18n/LocaleContext";
 
 export const metadata: Metadata = {
-  title: "酷嗑 — AI 料理助手",
-  description: "選菜 → 陪做 → 評分，三段 AI 一路陪料理新手完成一道菜",
+  title: "Kuke — AI Cooking Companion",
+  description:
+    "Pick a dish, cook step by step, get feedback — three AI helpers guide cooking beginners through a whole dish.",
 };
 
 // 手機優先（廚房情境）
@@ -20,10 +22,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-Hant">
+    <html lang="en">
       <body className="min-h-screen font-sans text-ink">
-        <Header />
-        {children}
+        <LocaleProvider>
+          <Header />
+          {children}
+        </LocaleProvider>
       </body>
     </html>
   );

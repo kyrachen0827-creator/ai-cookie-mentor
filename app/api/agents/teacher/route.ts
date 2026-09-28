@@ -13,11 +13,13 @@ export async function POST(request: Request) {
       recipe?: Recipe;
       stepIndex?: number | null;
       question?: string;
+      locale?: "en" | "zh";
     };
+    const locale = body.locale === "zh" ? "zh" : "en";
 
     if (!body.recipe || !body.question?.trim()) {
       return NextResponse.json(
-        { error: "缺少食譜或問題內容" },
+        { error: locale === "en" ? "Missing recipe or question" : "缺少食譜或問題內容" },
         { status: 400 },
       );
     }
@@ -26,11 +28,12 @@ export async function POST(request: Request) {
       recipe: body.recipe,
       stepIndex: body.stepIndex ?? null,
       question: body.question,
+      locale,
     });
 
     return NextResponse.json({ answer });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "未知錯誤";
+    const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

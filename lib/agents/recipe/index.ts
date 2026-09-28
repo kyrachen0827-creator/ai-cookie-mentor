@@ -28,6 +28,8 @@ export interface RecommendInput {
   /** 使用者輸入的食材（一種或多種） */
   ingredients: string[];
   profile: FoodProfile;
+  /** 輸出語系（比賽要求英文為主，預設 en）；required_tools 固定用中文 canonical 值，不受此影響 */
+  locale?: "en" | "zh";
 }
 
 export interface RecommendResult {
@@ -51,6 +53,7 @@ interface RawRecipe {
 
 function buildPrompt(input: RecommendInput): string {
   const { ingredients, profile } = input;
+  const en = input.locale === "en";
   return [
     "你是台灣料理新手的食譜推薦助手。根據使用者食材，推薦 3 道新手做得到的家常菜。",
     `做法請參考台灣常見可靠來源的風格：${TRUSTED_SOURCES.join("、")}；只推薦真實存在的家常做法，不要杜撰。`,
@@ -61,6 +64,9 @@ function buildPrompt(input: RecommendInput): string {
     `預設人數：${profile.default_serving_size}`,
     "",
     "步驟描述避免『適量』『炒到有香氣』這類需經驗才懂的說法，一律用可觀察的判斷（外觀、聲音、氣味）。",
+    en
+      ? "IMPORTANT: Write recipe_name, ingredient names/amounts, step actions/doneness_cue, and finished_dish_standard all in English (translate the dish itself into natural English home-cooking language, don't just romanize it). But required_tools MUST stay exactly as the Chinese strings from this fixed list (do not translate them): 電磁爐、電子鍋、快煮鍋、氣炸鍋、烤箱、微波爐 — pick only from ones the user actually owns, listed above in Chinese."
+      : "",
     "只輸出 JSON 陣列，不要有任何多餘文字或 markdown。每個元素格式：",
     `{
   "recipe_name": "菜名",
@@ -72,7 +78,9 @@ function buildPrompt(input: RecommendInput): string {
   "needs_feel_judgement": false,
   "needs_special_skill_or_tool": false
 }`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**
@@ -82,8 +90,9 @@ function buildPrompt(input: RecommendInput): string {
 export async function recommendRecipes(
   input: RecommendInput,
 ): Promise<RecommendResult> {
+  const en = input.locale === "en";
   if (input.ingredients.length === 0) {
-    return { recipes: [], note: "請先輸入食材" };
+    return { recipes: [], note: en ? "Please enter at least one ingredient" : "請先輸入食材" };
   }
 
   let candidates: Recipe[];
@@ -92,15 +101,19 @@ export async function recommendRecipes(
   if (hasGeminiKey()) {
     try {
       candidates = await generateFromGemini(input);
-      if (candidates.length === 0) throw new Error("AI 未回傳可用食譜");
+      if (candidates.length === 0) throw new Error(en ? "AI returned no usable recipe" : "AI 未回傳可用食譜");
     } catch (e) {
-      candidates = mockRecipes(input.ingredients);
-      const msg = e instanceof Error ? e.message : "未知錯誤";
-      sourceNote = `AI 生成暫時無法使用（${msg}），先以範例資料展示。`;
+      candidates = mockRecipes(input.ingredients, en);
+      const msg = e instanceof Error ? e.message : en ? "Unknown error" : "未知錯誤";
+      sourceNote = en
+        ? `AI generation is temporarily unavailable (${msg}) — showing sample data for now.`
+        : `AI 生成暫時無法使用（${msg}），先以範例資料展示。`;
     }
   } else {
-    candidates = mockRecipes(input.ingredients);
-    sourceNote = "開發模式：未設定 GEMINI_API_KEY，先以範例資料展示流程。";
+    candidates = mockRecipes(input.ingredients, en);
+    sourceNote = en
+      ? "Dev mode: GEMINI_API_KEY not set — showing sample data to demonstrate the flow."
+      : "開發模式：未設定 GEMINI_API_KEY，先以範例資料展示流程。";
   }
 
   // 硬性過濾：沒有的工具不推薦（不 fallback，避免推薦到使用者做不了的菜）；
@@ -111,7 +124,9 @@ export async function recommendRecipes(
   if (usable.length === 0) {
     return {
       recipes: [],
-      note: "以目前的食材與限制找不到合適的菜，試著多加一項食材，或放寬限制。",
+      note: en
+        ? "No suitable dish found with your current ingredients and restrictions — try adding one more ingredient or relaxing the restrictions."
+        : "以目前的食材與限制找不到合適的菜，試著多加一項食材，或放寬限制。",
     };
   }
 
@@ -205,7 +220,11 @@ function hashString(s: string): string {
 /** 火力正規化：AI 對免開火步驟常回「無/免」等，統一轉為無（不顯示火力標籤） */
 function normalizeHeat(heat?: string): string | undefined {
   const h = heat?.trim();
-  if (!h || ["無", "免", "不需要", "無需", "不用", "-", "—", "常溫"].includes(h)) {
+  if (
+    !h ||
+    ["無", "免", "不需要", "無需", "不用", "-", "—", "常溫"].includes(h) ||
+    ["none", "no heat", "n/a", "room temperature"].includes(h.toLowerCase())
+  ) {
     return undefined;
   }
   return h;
@@ -223,7 +242,9 @@ function filterByRestrictions(recipes: Recipe[], restrictions: string[]): Recipe
 }
 
 /** 開發用範例資料（無 key 或生成失敗時的 fallback，示範難易度排序與工具過濾） */
-function mockRecipes(ingredients: string[]): Recipe[] {
+function mockRecipes(ingredients: string[], en: boolean): Recipe[] {
+  if (en) return mockRecipesEn(ingredients);
+
   const main = ingredients[0] ?? "食材";
   return [
     {
@@ -321,6 +342,109 @@ function mockRecipes(ingredients: string[]): Recipe[] {
         { action: "烤箱 200°C 焗烤", heat: "200°C", minutes: 25, doneness_cue: "表面金黃、起司冒泡" },
       ],
       finished_dish_standard: `表面金黃起司牽絲，內部軟嫩，醬汁濃稠不出水。`,
+    },
+  ];
+}
+
+/** 英文版開發用範例資料。難易度／required_tools 仍用資料模型的中文 canonical 值。 */
+function mockRecipesEn(ingredients: string[]): Recipe[] {
+  const main = ingredients[0] ?? "your ingredient";
+  return [
+    {
+      id: `mock-en-${main}-egg`,
+      recipe_name: `${main} Scrambled Eggs`,
+      difficulty_level: "新手",
+      estimated_time_minutes: 12,
+      required_tools: [],
+      ingredients: [
+        { name: main, amount: "1 piece" },
+        { name: "Egg", amount: "2" },
+        { name: "Salt", amount: "pinch" },
+        { name: "Cooking oil", amount: "a little" },
+      ],
+      steps: [
+        { action: `Slice the ${main}`, minutes: 3, doneness_cue: "Cut into ~0.5cm thick slices" },
+        { action: "Beat eggs with salt", minutes: 1, doneness_cue: "Evenly mixed, no visible egg white chunks" },
+        { action: "Heat oil, scramble eggs", heat: "Medium heat", minutes: 2, doneness_cue: "Edges of the egg set, then remove" },
+        { action: `Add ${main}, stir-fry together`, heat: "Medium heat", minutes: 4, doneness_cue: `${main} turns translucent, edges soften` },
+      ],
+      finished_dish_standard: `Golden, fluffy eggs; ${main} fully cooked but still colorful; no excess liquid, not burnt.`,
+    },
+    {
+      id: `mock-en-${main}-soup`,
+      recipe_name: `${main} Egg Drop Soup`,
+      difficulty_level: "新手",
+      estimated_time_minutes: 15,
+      required_tools: [],
+      ingredients: [
+        { name: main, amount: "1 piece" },
+        { name: "Egg", amount: "1" },
+        { name: "Water", amount: "500ml" },
+        { name: "Salt", amount: "pinch" },
+      ],
+      steps: [
+        { action: `Chop ${main} and bring to a boil`, heat: "Medium heat", minutes: 6, doneness_cue: `${main} softens, broth turns rich` },
+        { action: "Drizzle beaten egg in a slow circle", heat: "Low heat", minutes: 1, doneness_cue: "Egg forms fine ribbons, then turn off heat" },
+        { action: "Season with salt", minutes: 1, doneness_cue: "Taste — seasoning balanced" },
+      ],
+      finished_dish_standard: `Clear, lightly reddish broth; fine, unclumped egg ribbons; ${main} soft but not mushy.`,
+    },
+    {
+      id: `mock-en-${main}-salad`,
+      recipe_name: `${main} Cold Salad`,
+      difficulty_level: "新手",
+      estimated_time_minutes: 10,
+      required_tools: [],
+      ingredients: [
+        { name: main, amount: "1 piece" },
+        { name: "Minced garlic", amount: "1 tsp" },
+        { name: "Soy sauce", amount: "1 tbsp" },
+        { name: "Sesame oil", amount: "a little" },
+      ],
+      steps: [
+        { action: `Cut ${main} into thin strips`, minutes: 4, doneness_cue: "Even, thin strips" },
+        { action: "Salt and let sit", minutes: 5, doneness_cue: "Squeeze out released liquid" },
+        { action: "Toss with garlic, soy sauce, sesame oil", minutes: 1, doneness_cue: "Every strip evenly coated" },
+      ],
+      finished_dish_standard: `Bright color, crisp texture, sauce evenly coating with no pooling.`,
+    },
+    {
+      id: `mock-en-${main}-airfry`,
+      recipe_name: `Air-Fried ${main}`,
+      difficulty_level: "普通",
+      estimated_time_minutes: 20,
+      required_tools: ["氣炸鍋"],
+      ingredients: [
+        { name: main, amount: "1 piece" },
+        { name: "Olive oil", amount: "1 tsp" },
+        { name: "Salt", amount: "pinch" },
+        { name: "Black pepper", amount: "pinch" },
+      ],
+      steps: [
+        { action: `Cut ${main} into pieces, toss with oil and seasoning`, minutes: 4, doneness_cue: "Every piece lightly coated in oil" },
+        { action: "Air fry at 180°C", heat: "180°C", minutes: 12, doneness_cue: "Golden surface, edges slightly crisp" },
+        { action: "Rest before serving", minutes: 2, doneness_cue: "Cool enough to eat comfortably" },
+      ],
+      finished_dish_standard: `Golden, slightly caramelized surface; tender and juicy inside; not overly wet.`,
+    },
+    {
+      id: `mock-en-${main}-bake`,
+      recipe_name: `Baked Cheesy ${main}`,
+      difficulty_level: "需要經驗",
+      estimated_time_minutes: 40,
+      required_tools: ["烤箱"],
+      ingredients: [
+        { name: main, amount: "2 pieces" },
+        { name: "Shredded cheese", amount: "as needed" },
+        { name: "Heavy cream", amount: "50ml" },
+        { name: "Salt", amount: "pinch" },
+      ],
+      steps: [
+        { action: `Slice ${main} and layer in a dish`, minutes: 6, doneness_cue: "Slices overlapping, not pressed down" },
+        { action: "Pour cream, sprinkle cheese", minutes: 3, doneness_cue: "Cheese evenly covers the surface" },
+        { action: "Bake at 200°C", heat: "200°C", minutes: 25, doneness_cue: "Golden top, cheese bubbling" },
+      ],
+      finished_dish_standard: `Golden, stretchy melted cheese on top; tender inside; sauce thick, not watery.`,
     },
   ];
 }
