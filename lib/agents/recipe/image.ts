@@ -21,6 +21,7 @@ function buildImagePrompt(name: string, standard?: string): string {
     standard ? `成品應有的樣子：${standard}` : "",
     "寫實食物攝影：暖色自然光、略俯角、乾淨木質或素色餐桌背景，擺盤家常自然，像台灣食譜網站的示範照。",
     "畫面只有這道料理本身，不要文字、浮水印、logo 或人物。",
+    "直接輸出圖片本身，不要回覆任何文字說明或聊天內容（例如不要說『好的，這就為你生成』），只要圖片。",
   ]
     .filter(Boolean)
     .join("\n");

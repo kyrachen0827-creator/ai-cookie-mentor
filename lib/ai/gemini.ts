@@ -80,9 +80,10 @@ export async function generateText(
  * 呼叫 Gemini 影像模型生成一張圖，回傳 data URL（base64）。
  * 用於生成食譜成品示意圖（新生成、非抄取任何網站圖片）。
  *
- * 推薦頁會同時對 3–5 道菜並發呼叫這支 API，Gemini 影像模型的每分鐘配額
- * 偏緊，很容易撞到暫時性 429（RESOURCE_EXHAUSTED）。原本一次失敗就永久
- * 掉回 emoji placeholder；改為對 429 做少量重試＋退避，減少非必要的降級。
+ * 推薦頁會同時對 3–5 道菜並發呼叫這支 API，容易撞到兩種暫時性失敗：
+ * (1) 429（RESOURCE_EXHAUSTED，配額偏緊）(2) 模型偶爾只回文字、不附圖
+ * （非配額問題，觀察上同一個 prompt 重打常常就正常，屬隨機性而非必然）。
+ * 原本一次失敗就永久掉回 emoji placeholder；兩種都做少量重試＋退避。
  */
 export async function generateImage(prompt: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -129,8 +130,13 @@ export async function generateImage(prompt: string): Promise<string> {
         return `data:${mime};base64,${inline.data}`;
       }
     }
-    // 模型偶爾只回文字、沒附圖（沒有配額問題），這種情況重試通常也沒用，直接丟出。
-    throw new Error("影像回傳為空");
+    // 模型偶爾只回文字、沒附圖；觀察上是隨機性，重打同一個 prompt 常常就正常，值得重試。
+    lastError = new Error("影像回傳為空");
+    if (attempt < maxAttempts) {
+      await new Promise((r) => setTimeout(r, 800 * attempt));
+      continue;
+    }
+    throw lastError;
   }
 
   throw lastError ?? new Error("影像生成失敗");
