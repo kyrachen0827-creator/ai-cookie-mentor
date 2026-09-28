@@ -40,6 +40,20 @@ const items = [
     prompt:
       "Generate a photorealistic close-up image of hands using a kitchen knife to dice a fresh red tomato into small cubes on a wooden cutting board, warm natural light, shallow depth of field, appetizing home cooking photography, no text, no watermark, only hands visible (no face).",
   },
+  {
+    file: "tool-induction",
+    prompt:
+      "Generate a photorealistic studio product photo shot from directly above (top-down flat lay) of a modern black glass induction cooktop, a single circular burner ring clearly visible, centered, on a clean soft cream background, bright even warm lighting, no text, no watermark, no logo.",
+  },
+  { file: "tool-rice-cooker", prompt: img("a white rice cooker with a black lid button") },
+  {
+    file: "tool-multicooker",
+    prompt:
+      "Generate a photorealistic studio product photo of a compact stainless steel and black electric multi-cooker (instant-pot style) with a rounded lid handle and a simple blank control panel, centered, on a clean soft cream background, bright even warm lighting. Absolutely no text, no brand name, no logo, no labels anywhere on the product.",
+  },
+  { file: "tool-airfryer", prompt: img("a black digital air fryer with a pull-out basket") },
+  { file: "tool-oven", prompt: img("a small black and silver countertop toaster oven") },
+  { file: "tool-microwave", prompt: img("a compact white microwave oven") },
 ];
 
 function img(subject) {
