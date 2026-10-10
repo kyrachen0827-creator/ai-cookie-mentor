@@ -14,6 +14,7 @@ import "server-only";
  */
 import type { FoodProfile, Recipe } from "@/lib/data/types";
 import { generateText, hasGeminiKey } from "@/lib/ai/gemini";
+import { checkRecipe, hasConflict } from "@/lib/safety/allergens";
 import {
   estimateTimeMinutes,
   filterByTools,
@@ -104,10 +105,11 @@ export async function recommendRecipes(
       if (candidates.length === 0) throw new Error(en ? "AI returned no usable recipe" : "AI 未回傳可用食譜");
     } catch (e) {
       candidates = mockRecipes(input.ingredients, en);
-      const msg = e instanceof Error ? e.message : en ? "Unknown error" : "未知錯誤";
+      // 原始錯誤（可能含 Gemini 回應內容）只寫 server log，不回給使用者
+      console.error("[recipe] Gemini generation failed, falling back to sample data", e);
       sourceNote = en
-        ? `AI generation is temporarily unavailable (${msg}) — showing sample data for now.`
-        : `AI 生成暫時無法使用（${msg}），先以範例資料展示。`;
+        ? "AI generation is temporarily unavailable — showing sample data for now."
+        : "AI 生成暫時無法使用，先以範例資料展示。";
     }
   } else {
     candidates = mockRecipes(input.ingredients, en);
@@ -230,15 +232,14 @@ function normalizeHeat(heat?: string): string | undefined {
   return h;
 }
 
-/** 過敏／飲食限制：排除食材命中任一限制字詞的食譜 */
+/**
+ * 過敏／飲食限制：排除與限制明確衝突的食譜（食材名稱與步驟文字都檢查）。
+ * 比對規則（類別詞、中英文、大小寫）見 lib/safety/allergens.ts。
+ * 「無法確認」的複合食材（例：醬油）不在此排除，改由備料與老師階段提醒使用者確認成分標示。
+ */
 function filterByRestrictions(recipes: Recipe[], restrictions: string[]): Recipe[] {
   if (restrictions.length === 0) return recipes;
-  return recipes.filter(
-    (r) =>
-      !r.ingredients.some((ing) =>
-        restrictions.some((bad) => ing.name.includes(bad)),
-      ),
-  );
+  return recipes.filter((r) => !hasConflict(checkRecipe(r, restrictions)));
 }
 
 /** 開發用範例資料（無 key 或生成失敗時的 fallback，示範難易度排序與工具過濾） */

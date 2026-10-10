@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { getProfile, saveProfile } from "@/lib/data/profile-client";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { toolLabel } from "@/lib/i18n/labels";
+import { splitRestrictionInput } from "@/lib/safety/allergens";
 
 const TOOL_OPTIONS = ["電磁爐", "電子鍋", "快煮鍋", "氣炸鍋", "烤箱", "微波爐"];
 
@@ -54,10 +55,7 @@ export default function SetupPage() {
   function handleSave() {
     saveProfile({
       kitchen_tools: tools,
-      dietary_restrictions: restrictions
-        .split(/[,，、\s]+/)
-        .map((s) => s.trim())
-        .filter(Boolean),
+      dietary_restrictions: splitRestrictionInput(restrictions),
       default_serving_size: serving,
     });
     setSaved(true);

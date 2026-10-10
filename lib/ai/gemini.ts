@@ -13,8 +13,34 @@ const GEMINI_IMAGE_MODEL =
   process.env.GEMINI_IMAGE_MODEL ?? "gemini-2.5-flash-image";
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 
+/** 文字模型的名稱（評估報告要寫明用的是哪個模型） */
+export function geminiTextModel(): string {
+  return GEMINI_MODEL;
+}
+
 export function hasGeminiKey(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
+}
+
+/** 金鑰放在 header 而非 URL query：URL 會被代理、存取日誌與錯誤訊息記錄下來 */
+export function geminiRequestInit(
+  apiKey: string,
+  body: unknown,
+  timeoutMs?: number,
+): RequestInit {
+  return {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify(body),
+    ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
+  };
+}
+
+export function geminiUrl(model: string): string {
+  return `${GEMINI_ENDPOINT}/${model}:generateContent`;
 }
 
 /**
@@ -26,7 +52,13 @@ export function hasGeminiKey(): boolean {
 export async function generateText(
   prompt: string,
   images?: { mimeType: string; dataBase64: string }[],
-  options?: { temperature?: number; thinkingBudget?: number },
+  options?: {
+    temperature?: number;
+    thinkingBudget?: number;
+    json?: boolean;
+    /** 單次請求的逾時（毫秒）。沒設就不逾時（評審的讀圖本來就慢） */
+    timeoutMs?: number;
+  },
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -52,17 +84,17 @@ export async function generateText(
     // Gemini 3.x 預設會「思考」增加延遲；推薦/問答不需深度推理，設 0 關閉以加速
     generationConfig.thinkingConfig = { thinkingBudget: options.thinkingBudget };
   }
+  if (options?.json) {
+    // 要求模型直接輸出 JSON（仍須由呼叫端驗證，模型不保證符合我們的結構）
+    generationConfig.responseMimeType = "application/json";
+  }
   if (Object.keys(generationConfig).length > 0) {
     body.generationConfig = generationConfig;
   }
 
   const res = await fetch(
-    `${GEMINI_ENDPOINT}/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
+    geminiUrl(GEMINI_MODEL),
+    geminiRequestInit(apiKey, body, options?.timeoutMs),
   );
 
   if (!res.ok) {
@@ -96,15 +128,11 @@ export async function generateImage(prompt: string): Promise<string> {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const res = await fetch(
-      `${GEMINI_ENDPOINT}/${GEMINI_IMAGE_MODEL}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-        }),
-      },
+      geminiUrl(GEMINI_IMAGE_MODEL),
+      geminiRequestInit(apiKey, {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+      }),
     );
 
     if (!res.ok) {

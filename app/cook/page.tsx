@@ -17,6 +17,12 @@ import { getSafetyHints } from "@/lib/agents/teacher/safety";
 import { notableTools } from "@/lib/recipe-tools";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { toolLabel } from "@/lib/i18n/labels";
+import RestrictionNotice from "@/components/RestrictionNotice";
+import CoachReply from "@/components/CoachReply";
+import StepTimer from "@/components/StepTimer";
+import { trimHistory, type CoachHistoryItem, type CoachTurn } from "@/lib/agents/teacher/coach-types";
+import { getProfile } from "@/lib/data/profile-client";
+import { checkRecipe } from "@/lib/safety/allergens";
 import {
   appendLog,
   getSession,
@@ -30,6 +36,11 @@ const SELECTED_KEY = "zaohuo.selectedRecipe";
 interface QA {
   q: string;
   a: string;
+  /** 結構化的教練回合（走 Coach 的回覆才有）；沒有就顯示純文字 a */
+  turn?: CoachTurn;
+  source?: string;
+  /** 這次問答出錯了（a 是錯誤訊息），不要放進給老師的歷史 */
+  failed?: boolean;
 }
 
 function Cook() {
@@ -43,6 +54,8 @@ function Cook() {
   const [asking, setAsking] = useState(false);
   const [repeated, setRepeated] = useState(false);
   const [ready, setReady] = useState(false);
+  // 使用者設定的過敏／飲食限制（localStorage 只能在瀏覽器端讀，所以放在載入時）
+  const [restrictions, setRestrictions] = useState<string[]>([]);
   const loaded = useRef(false);
 
   // 載入選定食譜 + 還原進度
@@ -66,6 +79,7 @@ function Cook() {
       setRecipe(r);
       setStep(s.current_step);
     }
+    setRestrictions(getProfile().dietary_restrictions);
     setReady(true);
   }, [params]);
 
@@ -85,6 +99,7 @@ function Cook() {
   }
 
   const total = recipe.steps.length;
+  const restrictionFindings = checkRecipe(recipe, restrictions);
 
   function goStep(n: number) {
     setStep(n);
@@ -96,13 +111,25 @@ function Cook() {
     }
   }
 
-  async function ask() {
-    const qtext = question.trim();
+  /** `override` 是點選建議回答時直接送出的文字；沒給就送輸入框的內容 */
+  async function ask(override?: string) {
+    const qtext = (override ?? question).trim();
     if (!recipe || !qtext || asking) return;
-    setQuestion("");
+    // 同一步驟已完成的問答，讓老師知道前面聊過什麼（出錯的那幾則不算）
+    const history = trimHistory(
+      qa
+        .filter((item) => item.a && !item.failed)
+        .flatMap((item): CoachHistoryItem[] => [
+          { role: "user", text: item.q },
+          { role: "coach", text: item.a, kind: item.turn?.kind },
+        ]),
+    );
+    if (override === undefined) setQuestion("");
     setAsking(true);
     setQa((prev) => [...prev, { q: qtext, a: "" }]);
     appendLog(recipe, { source: "使用者狀態", content: `Step ${step} question: ${qtext}` });
+    const finish = (patch: Partial<QA>) =>
+      setQa((prev) => prev.map((item, i) => (i === prev.length - 1 ? { ...item, ...patch } : item)));
     try {
       const res = await fetch("/api/agents/teacher", {
         method: "POST",
@@ -111,25 +138,24 @@ function Cook() {
           recipe,
           stepIndex: step >= 1 && step <= total ? step - 1 : null,
           question: qtext,
+          profile: getProfile(),
+          history,
           locale,
         }),
       });
       const data = await res.json();
-      const ans = res.ok
-        ? (data.answer as string)
-        : (data.error ?? t("Failed to answer", "回答失敗"));
-      appendLog(recipe, { source: "老師提醒", content: ans });
-      setQa((prev) =>
-        prev.map((item, i) => (i === prev.length - 1 ? { ...item, a: ans } : item)),
-      );
+      if (!res.ok) {
+        finish({ a: data.error ?? t("Failed to answer", "回答失敗"), failed: true });
+        return;
+      }
+      const answer = data.answer as string;
+      appendLog(recipe, { source: "老師提醒", content: answer });
+      finish({ a: answer, turn: data.coach as CoachTurn | undefined, source: data.source as string | undefined });
     } catch {
-      setQa((prev) =>
-        prev.map((item, i) =>
-          i === prev.length - 1
-            ? { ...item, a: t("Something went wrong — try asking again.", "網路出了點問題，請再問一次。") }
-            : item,
-        ),
-      );
+      finish({
+        a: t("Something went wrong — try asking again.", "網路出了點問題，請再問一次。"),
+        failed: true,
+      });
     } finally {
       setAsking(false);
     }
@@ -186,6 +212,7 @@ function Cook() {
               {notableTools(recipe.required_tools).map((tool) => toolLabel(tool, locale)).join(t(", ", "、"))}
             </p>
           )}
+          <RestrictionNotice findings={restrictionFindings} />
           <button
             onClick={() => goStep(1)}
             className="w-full rounded-full bg-primary px-4 py-3 font-semibold text-white transition hover:bg-primary-dark"
@@ -196,6 +223,13 @@ function Cook() {
       )}
 
       {/* ===== 一步一畫面 ===== */}
+      {/* 從中途進度回來的人不會經過備料頁，所以明確衝突的警告在每一步都要顯示 */}
+      {step >= 1 && step <= total && (
+        <RestrictionNotice
+          findings={restrictionFindings.filter((f) => f.severity === "conflict")}
+        />
+      )}
+
       {step >= 1 && step <= total && (
         <StepView
           step={recipe.steps[step - 1]}
@@ -209,7 +243,8 @@ function Cook() {
           question={question}
           setQuestion={setQuestion}
           asking={asking}
-          onAsk={ask}
+          onAsk={() => ask()}
+          onQuickAnswer={(text) => ask(text)}
         />
       )}
 
@@ -258,6 +293,7 @@ function StepView({
   setQuestion,
   asking,
   onAsk,
+  onQuickAnswer,
 }: {
   step: Recipe["steps"][number];
   index: number;
@@ -271,6 +307,7 @@ function StepView({
   setQuestion: (v: string) => void;
   asking: boolean;
   onAsk: () => void;
+  onQuickAnswer: (text: string) => void;
 }) {
   const { locale } = useLocale();
   const t = (en: string, zh: string) => (locale === "en" ? en : zh);
@@ -301,6 +338,9 @@ function StepView({
           <span className="font-semibold text-herb">{t("How to tell it's right: ", "怎麼看出做對了：")}</span>
           {step.doneness_cue}
         </div>
+
+        {/* 需要等待的步驟提供計時（換步驟時以 key 重新掛載，計時自動清掉） */}
+        {step.minutes ? <StepTimer key={index} minutes={step.minutes} /> : null}
 
         {/* 安全提醒 */}
         {hints.length > 0 && (
@@ -353,13 +393,25 @@ function StepView({
                 {item.q}
               </div>
               <div className="self-start rounded-2xl rounded-bl-sm bg-surface px-3 py-2 text-sm text-ink ring-1 ring-brand-border">
-                {item.a || (asking && i === qa.length - 1 ? t("Thinking…", "老師想一下…") : "")}
+                {item.turn ? (
+                  <CoachReply
+                    turn={item.turn}
+                    source={item.source}
+                    // 只有最新一則、且不在等回覆時，建議回答的按鈕才可點
+                    onPick={i === qa.length - 1 && !asking ? onQuickAnswer : undefined}
+                  />
+                ) : (
+                  <span className="whitespace-pre-line">
+                    {item.a || (asking && i === qa.length - 1 ? t("Thinking…", "老師想一下…") : "")}
+                  </span>
+                )}
               </div>
             </div>
           ))}
         </div>
         <div className="mt-3 flex items-center gap-2 rounded-2xl bg-surface px-3 py-2 ring-1 ring-brand-border">
           <input
+            maxLength={500} /* 對應 API 的問題長度上限（lib/api/validators.ts questionChars） */
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onAsk()}

@@ -22,3 +22,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# babysitter 外掛的執行紀錄
+/.a5c/

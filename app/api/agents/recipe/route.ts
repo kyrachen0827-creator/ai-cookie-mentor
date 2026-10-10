@@ -1,42 +1,22 @@
-import { NextResponse } from "next/server";
 import { recommendRecipes } from "@/lib/agents/recipe";
-import type { FoodProfile } from "@/lib/data/types";
+import { handleAgentRoute, type RouteConfig } from "@/lib/api/guard";
+import { parseRecipeRequest } from "@/lib/api/validators";
 
 /**
  * 食譜推薦 agent 的後端代理端點。
  *
  * CLAUDE.md 鐵則：前端呼叫本端點，Gemini key 只在 server 端（本路由/lib）持有。
- * 前端絕不直接呼叫 Gemini。
+ * 前端絕不直接呼叫 Gemini。輸入驗證、限流與錯誤保護見 lib/api/guard.ts。
  */
-export async function POST(request: Request) {
-  try {
-    const body = (await request.json()) as {
-      ingredients?: string[];
-      profile?: FoodProfile;
-      locale?: "en" | "zh";
-    };
+const CONFIG: RouteConfig = {
+  scope: "recipe",
+  maxBytes: 20 * 1024,
+  rateLimit: { max: 10, windowMs: 60_000 },
+};
 
-    const locale = body.locale === "zh" ? "zh" : "en";
-    const ingredients = (body.ingredients ?? [])
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const profile: FoodProfile = body.profile ?? {
-      kitchen_tools: [],
-      dietary_restrictions: [],
-      default_serving_size: 1,
-    };
-
-    if (ingredients.length === 0) {
-      return NextResponse.json(
-        { error: locale === "en" ? "Please enter at least one ingredient" : "請輸入至少一種食材" },
-        { status: 400 },
-      );
-    }
-
-    const result = await recommendRecipes({ ingredients, profile, locale });
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+export function POST(request: Request) {
+  return handleAgentRoute(request, CONFIG, async (body, locale) => {
+    const { ingredients, profile } = parseRecipeRequest(body);
+    return recommendRecipes({ ingredients, profile, locale });
+  });
 }
