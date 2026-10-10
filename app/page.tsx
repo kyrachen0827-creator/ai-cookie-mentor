@@ -112,7 +112,13 @@ export default function HomePage() {
               {t("AI cooking companion · for beginners", "AI 料理助手 · 專給料理新手")}
             </span>
 
-            <h1 className="font-serif text-4xl font-black leading-tight text-ink md:text-5xl">
+            {/* 字級依「實測可用寬度」而非螢幕大小遞增，兩句才各自成行
+                （否則 dish, 與 it. 會落單）。實測 line2 寬度／可用寬度：
+                  390px 單欄 → 可用 310
+                  768px 起 md:grid-cols-2，欄寬反而縮到 312，所以這裡要降級
+                 1024px 欄寬 440 ／ 1280px 以上 504
+                原本的 md:text-5xl(48px) 需要 526px，在任何斷點都塞不下。 */}
+            <h1 className="font-serif text-[1.7rem] font-black leading-[1.2] text-ink sm:text-4xl sm:leading-tight md:text-[1.7rem] lg:text-4xl xl:text-[2.75rem]">
               {t("Cook your first dish,", "第一次做菜，")}
               <br />
               {t("and actually ", "也可以")}
@@ -197,24 +203,31 @@ export default function HomePage() {
           {/* 右側：番茄炒蛋成品大圖為主視覺，陪做 Demo 卡疊在圖片右上角 */}
           <div id="demo" className="flex items-center justify-center scroll-mt-24 md:justify-end">
             <div className="relative w-full max-w-md pt-8">
-              <img
-                src="/landing/dish.png"
-                alt={t("Tomato scrambled eggs", "番茄炒蛋")}
-                className="h-72 w-full rounded-3xl object-cover shadow-xl ring-1 ring-brand-border sm:h-80"
-              />
-              <span className="absolute bottom-3 left-4 z-10 rotate-[-4deg] rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-accent shadow-sm ring-1 ring-brand-border">
-                {t("Easy & tasty ✨", "簡單又好吃 ✨")}
-              </span>
-              <img
-                src="/landing/scallion.png"
-                alt=""
-                aria-hidden
-                className="pointer-events-none absolute -bottom-5 -right-3 hidden h-16 w-16 rotate-6 rounded-full object-cover opacity-90 shadow-md sm:block"
-              />
+              {/* 疊在圖片上的標籤與裝飾圖要以「圖片」為定位基準。
+                  若掛在外層容器上，bottom-* 會算到說明文字的下緣，
+                  標籤與蔥圖就會壓在下方的說明文字上。 */}
+              <div className="relative">
+                <img
+                  src="/landing/dish.png"
+                  alt={t("Tomato scrambled eggs", "番茄炒蛋")}
+                  className="h-72 w-full rounded-3xl object-cover shadow-xl ring-1 ring-brand-border sm:h-80"
+                />
+                <span className="absolute bottom-3 left-4 z-10 rotate-[-4deg] rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-accent shadow-sm ring-1 ring-brand-border">
+                  {t("Easy & tasty ✨", "簡單又好吃 ✨")}
+                </span>
+                <img
+                  src="/landing/scallion.png"
+                  alt=""
+                  aria-hidden
+                  className="pointer-events-none absolute -bottom-5 -right-3 hidden h-16 w-16 rotate-6 rounded-full object-cover opacity-90 shadow-md sm:block"
+                />
+              </div>
               <div className="absolute -top-4 right-0 w-[70%] max-w-[260px] sm:-right-8">
                 <CookingDemo />
               </div>
-              <p className="mt-3 text-center text-xs text-ink-soft">
+              {/* sm 以上才會出現的蔥圖是 -bottom-5，會懸出圖片下緣 20px，
+                  說明文字需留足間距才不會被蓋到。 */}
+              <p className="mt-3 text-center text-xs text-ink-soft sm:mt-8">
                 {t(
                   "Illustrative demo — the real walkthrough follows your actual recipe steps.",
                   "示範畫面，實際陪做以真實食譜步驟為準",
