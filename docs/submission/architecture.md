@@ -32,7 +32,7 @@ flowchart LR
 - **AI proxy**: every model call goes through a Next.js API route. The Gemini key lives only on the server (`server-only` import guard; key sent in the `x-goog-api-key` header, never in the URL).
 - **Shared context**: the three agents never call each other. They share one "cooking context" (the chosen recipe, its `finished_dish_standard`, and the session log) defined in `lib/data/types.ts`.
 - **Storage**: currently the browser's `localStorage`. A server database is planned but not wired up.
-- **Deployment target**: a single container on GCP Cloud Run (`Dockerfile`, `DEPLOY.md`). The deployment has not been run yet.
+- **Deployment**: a single container on GCP Cloud Run, service `ku-ke` in `asia-east1`, built from source by Cloud Build (`Dockerfile`, `DEPLOY.md`). The Gemini key is injected from Secret Manager. Live at https://ku-ke-36010658739.asia-east1.run.app.
 
 ## API hardening (all agent routes)
 

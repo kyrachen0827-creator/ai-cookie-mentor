@@ -1,6 +1,6 @@
 # Kuke — Known Limitations
 
-An honest list for judges and future contributors. Updated 2026-10-10.
+An honest list for judges and future contributors. Updated 2026-10-11.
 
 ## AI behaviour
 
@@ -22,10 +22,11 @@ An honest list for judges and future contributors. Updated 2026-10-10.
 
 - **Data lives in the browser** (`localStorage`). There are no accounts, no sync across devices, and clearing browser data loses the portfolio.
 - **Rate limiting is in-memory per server instance.** On Cloud Run with several instances, each counts separately. The client IP comes from the last `X-Forwarded-For` entry, which hasn't been verified on Cloud Run.
-- **Cloud Run deployment has not been run yet.** `DEPLOY.md` is untested.
+- **One environment, deployed by hand.** The app runs as a single Cloud Run service (`ku-ke`, `asia-east1`), deployed with the command in `DEPLOY.md`. There is no staging environment and no CI; each deploy is run manually.
 - `npm audit` reports existing advisories in `next`, `postcss` and `braces` that haven't been addressed. There's no ESLint configuration, so `npm run lint` was not run.
 - **PWA is minimal**: there is a web app manifest (add to home screen, opens standalone), but no service worker and no offline support. Home-screen installation hasn't been tested on real iOS or Android devices. The icon is an SVG that draws 酷 with the device's font.
 - **Step timer**: shown only on steps with a time in the recipe, with an on-screen alert, a beep and vibration (where supported). Browsers throttle background tabs, so if the app isn't in front the alert appears when you return. The countdown itself stays accurate. Sound may stay muted if the phone's silent switch is on.
+- **Multi-word English ingredients are split.** The home-page search splits on spaces as well as commas, so "chicken breast" is sent as "chicken" and "breast" (`app/page.tsx`). Recipes still come back, but the ingredient list shown is wrong.
 - **Photo check-ins during cooking** ("does this look right?", in the spec) are not implemented. The coach is text-only.
 
 ## Process
